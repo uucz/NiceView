@@ -22,3 +22,15 @@
 - 触发条件：当前会话没有可直接调用的 Serena、sequential-thinking、shrimp-task-manager、memory MCP 服务。
 - 降级动作：使用本地 `rg`、`sed`、GitHub CLI、GitHub API 与项目内 `_PROJECT_*` 文件记录计划、风险和证据。
 - 回滚方式：删除本次新增的 AltStore/CI/项目记录文件，并将 README 恢复到上游内容。
+
+## 2026-05-14：v0.2.1 发布验证
+
+- 标签：`v0.2.1`
+- Actions：
+  - `iOS AltStore Release` 成功，run id：`25845556990`
+  - `Android Release APK` 成功，run id：`25845556969`
+- Release：`https://github.com/uucz/NiceView/releases/tag/v0.2.1`
+- AltStore 源：`https://uucz.github.io/NiceView/source.json`
+- IPA：`https://github.com/uucz/NiceView/releases/download/v0.2.1/niceview-unsigned.ipa`
+- 验证结果：`source.json` 已通过 `curl -L` 访问，Release 资产中 `niceview-unsigned.ipa` 大小为 `7052796` 字节，与源内 `size` 一致。
+- 剩余验证：需要在 iOS 设备的 AltStore 中实际添加源并安装，确认权限校验与签名流程通过。
