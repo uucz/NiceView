@@ -29,3 +29,8 @@ E027,API,curl,veil galleries and gallery detail,N/A,N/A,2026-05-14,https://veil.
 E028,本地代码,rg/sed,RandomImagePage 侧栏入口,v0.3.0,2026-05-14,2026-05-14,N/A,可发现性,确认主界面主要依赖左滑打开侧栏且没有显式筛选菜单按钮
 E029,本地代码,rg/sed,tagPreviewImages quota path,v0.3.0,2026-05-14,2026-05-14,N/A,可靠性,确认标签预览中的 imageById 调用未经过 quotaGuardedFetch 需要后续修正
 E030,本地代码,sed,SideInfoDrawer discovery scope,v0.3.0,2026-05-14,2026-05-14,N/A,标签探索,确认 App 侧栏仅对已加载的 featuredTags 与 popularTags 做本地过滤
+E031,API,curl,veil site-config latest sample,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/site-config,下一批规划,确认当前规模约 63765 图集 444284 图片 117189 标签且固定图片接口为 300s/60 次限制
+E032,API,curl,veil tag pagination sample,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/tags?limit=5&offset=24,标签浏览规划,确认 /v1/tags 支持 limit/offset 并返回 total/limit/offset
+E033,API,curl,veil gallery image pagination,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/gallery/63764?image_limit=5&image_offset=20,图集规划,确认图集详情图片分页参数为 image_limit/image_offset 且返回 sort_order 21-25
+E034,本地代码,sed,QuotaState single bucket,v0.3.0,2026-05-14,2026-05-14,N/A,请求稳定,确认 QuotaState 当前为单桶 70/300s 模型，需要双桶改造
+E035,本地代码,sed,HistoryGrid and TagStrip long press delete,v0.3.0,2026-05-14,2026-05-14,N/A,可发现性,确认历史网格和标签条删除主要依赖长按，需要显式删除入口
