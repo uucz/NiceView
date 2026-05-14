@@ -66,3 +66,20 @@
   - `Info.plist` 注入 `NSPhotoLibraryAddUsageDescription` 和 `NSPhotoLibraryUsageDescription`。
   - AltStore `metadata.json` 同步声明照片权限。
   - 保存成功文案根据返回目的地显示“系统相册”或“应用文件”。
+
+## 2026-05-14：v0.2.2 发布验证
+
+- 标签：`v0.2.2`
+- Actions：
+  - `iOS AltStore Release` 成功，run id：`25848183155`
+  - `Android Release APK` 成功，run id：`25848183146`
+- Release：`https://github.com/uucz/NiceView/releases/tag/v0.2.2`
+- AltStore 源：`https://uucz.github.io/NiceView/source.json`
+- IPA：`https://github.com/uucz/NiceView/releases/download/v0.2.2/niceview-unsigned.ipa`
+- 验证结果：
+  - `source.json` 已发布为 `0.2.2+1`，下载地址指向 `v0.2.2/niceview-unsigned.ipa`。
+  - `source.json` 已声明 `NSPhotoLibraryAddUsageDescription` 与 `NSPhotoLibraryUsageDescription`。
+  - Release 资产包含 `niceview-unsigned.ipa` 和 `source.json`；IPA 大小为 `7062007` 字节，和源内 `size` 一致。
+  - IPA 下载地址经重定向后返回 HTTP `200`，`content-type` 为 `application/octet-stream`。
+- 待验证：用户在 iOS 设备上通过 AltStore 更新到 `v0.2.2` 后，实际点击保存并确认图片进入系统 Photos。
+- 维护提醒：GitHub Actions 提示 Node.js 20 action runtime 将在 2026-09-16 移除，后续需要跟踪 `actions/*` 和 `softprops/action-gh-release` 对 Node.js 24 的支持。

@@ -9,3 +9,8 @@ E007,实机验证,用户确认,Nice View AltStore 安装验证,v0.2.1,2026-05-14
 E008,API,curl,veil site-config,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/site-config,规划验证,确认站点规模与封禁策略公告
 E009,API,curl,veil featured-tags/categories/tags/meta/preview,N/A,N/A,2026-05-14,https://veil.ortlinde.com/,规划验证,确认精选标签、分类、标签列表、元数据、标签预览和组合筛选均可用
 E010,站点脚本,curl,veil feedback schema,N/A,N/A,2026-05-14,https://veil.ortlinde.com/static/site.js,规划验证,确认 /v1/feedback body 为 category/subject/message/contact
+E011,GitHub Actions,GitHub CLI,iOS AltStore Release run 25848183155,v0.2.2,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/actions/runs/25848183155,发布验证,确认 analyze/test/iOS IPA/source.json/Release 上传/Pages 部署全部成功
+E012,GitHub Actions,GitHub CLI,Android Release APK run 25848183146,v0.2.2,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/actions/runs/25848183146,发布验证,确认 Android analyze/test/release APK artifact 全部成功
+E013,GitHub Pages,curl,Nice View source.json,v0.2.2,2026-05-14,2026-05-14,https://uucz.github.io/NiceView/source.json,AltStore 源验证,确认源文件已切到 0.2.2 且声明照片权限
+E014,GitHub Release,curl,NiceView v0.2.2 assets,v0.2.2,2026-05-14,2026-05-14,https://api.github.com/repos/uucz/NiceView/releases/tags/v0.2.2,发布资产验证,确认 niceview-unsigned.ipa 与 source.json 已上传且 IPA 大小为 7062007
+E015,GitHub Release,curl,NiceView v0.2.2 IPA HEAD,v0.2.2,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/releases/download/v0.2.2/niceview-unsigned.ipa,下载验证,确认 IPA 下载地址重定向后返回 HTTP 200 与 application/octet-stream
