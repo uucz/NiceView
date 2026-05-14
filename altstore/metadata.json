@@ -1,0 +1,25 @@
+{
+  "source": {
+    "name": "Nice View Source",
+    "subtitle": "Nice View 的 AltStore Classic 安装源。",
+    "description": "用于通过 AltStore 安装 Nice View 的自托管源。Nice View 是 veil.ortlinde.com 的轻量图片浏览客户端。",
+    "tintColor": "#D9A441",
+    "featuredApps": [
+      "com.ortlinde.niceview"
+    ]
+  },
+  "app": {
+    "name": "Nice View",
+    "bundleIdentifier": "com.ortlinde.niceview",
+    "developerName": "itsmorninghao / uucz",
+    "subtitle": "Ortlinde Veil 随机图片浏览客户端。",
+    "localizedDescription": "Nice View 是 veil.ortlinde.com 的轻量图片浏览客户端，支持随机浏览、标签筛选、历史记录和本地保存。",
+    "iconURL": "icon.svg",
+    "tintColor": "#D9A441",
+    "category": "photo-video",
+    "appPermissions": {
+      "entitlements": [],
+      "privacy": {}
+    }
+  }
+}

@@ -1,0 +1,143 @@
+name: iOS AltStore Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "CFBundleShortVersionString，留空则读取 pubspec.yaml"
+        required: false
+      build_version:
+        description: "CFBundleVersion，留空则读取 pubspec.yaml 或使用 run number"
+        required: false
+      release_tag:
+        description: "GitHub Release tag，留空则使用 v<version>"
+        required: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "nice-view-pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build unsigned IPA and source
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve release metadata
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          pubspec_version="$(sed -n 's/^version:[[:space:]]*//p' pubspec.yaml | head -n 1)"
+          default_version="${pubspec_version%%+*}"
+          default_build="${pubspec_version#*+}"
+          if [ "$default_build" = "$pubspec_version" ]; then
+            default_build="${GITHUB_RUN_NUMBER}"
+          fi
+
+          version="${{ inputs.version }}"
+          build_version="${{ inputs.build_version }}"
+          release_tag="${{ inputs.release_tag }}"
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            release_tag="${GITHUB_REF_NAME}"
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if [ -z "$version" ]; then
+            version="$default_version"
+          fi
+          if [ -z "$build_version" ]; then
+            build_version="$default_build"
+          fi
+          if [ -z "$build_version" ]; then
+            build_version="${GITHUB_RUN_NUMBER}"
+          fi
+          if [ -z "$release_tag" ]; then
+            release_tag="v$version"
+          fi
+
+          {
+            echo "version=$version"
+            echo "build_version=$build_version"
+            echo "release_tag=$release_tag"
+            echo "date=$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Analyze and test
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Build unsigned iOS IPA
+        run: |
+          scripts/build_unsigned_ios_ipa.sh \
+            "${{ steps.meta.outputs.version }}" \
+            "${{ steps.meta.outputs.build_version }}"
+
+      - name: Generate AltStore source
+        run: |
+          mkdir -p public
+          cp altstore/icon.svg public/icon.svg
+          python3 scripts/generate_altstore_source.py \
+            --metadata altstore/metadata.json \
+            --repository "${{ github.repository }}" \
+            --version "${{ steps.meta.outputs.version }}" \
+            --build-version "${{ steps.meta.outputs.build_version }}" \
+            --release-tag "${{ steps.meta.outputs.release_tag }}" \
+            --date "${{ steps.meta.outputs.date }}" \
+            --ipa build/ios/niceview-unsigned.ipa \
+            --output public/source.json
+          cat > public/index.html <<HTML
+          <!doctype html>
+          <html lang="zh-CN">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>Nice View AltStore Source</title>
+          </head>
+          <body>
+            <h1>Nice View AltStore Source</h1>
+            <p><a href="./source.json">source.json</a></p>
+            <p><a href="altstore://source?url=https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/source.json">在 AltStore 中添加</a></p>
+          </body>
+          </html>
+          HTML
+
+      - name: Upload IPA and source to GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.release_tag }}
+          files: |
+            build/ios/niceview-unsigned.ipa
+            public/source.json
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy source to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

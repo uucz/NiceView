@@ -1,0 +1,4 @@
+id,type,source,title,version,publish_date,access_date,link,applies_to,notes
+E001,官方文档,AltStore FAQ,Make a Source,N/A,N/A,2026-05-14,https://faq.altstore.io/developers/make-a-source,AltStore source.json,确认 source/app/version/appPermissions 等字段要求
+E002,GitHub API,GitHub Releases,itsmorninghao/NiceView v0.2.0,v0.2.0,2026-05-13,2026-05-14,https://api.github.com/repos/itsmorninghao/NiceView/releases,NiceView 现状,确认上游 release 仅包含 Android APK
+E003,GitHub API,GitHub Repository,itsmorninghao/NiceView,N/A,2026-05-13,2026-05-14,https://api.github.com/repos/itsmorninghao/NiceView,NiceView 现状,确认仓库为 Flutter/Dart 项目且默认分支为 main

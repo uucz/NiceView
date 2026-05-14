@@ -1,0 +1,5 @@
+id,description,category,likelihood,impact,mitigation,owner,status
+R001,本机未安装 Flutter 导致无法本地构建 iOS IPA,工具链,高,中,通过 GitHub Actions macOS runner 安装 Flutter 并执行构建,开发者,已缓解
+R002,AltStore 会校验 source.json 中声明的权限与 IPA 实际权限是否一致,发布风险,中,高,source.json 声明空 entitlements 与空 privacy；首个 release 后用 AltStore 实机验证,开发者,进行中
+R003,GitHub Pages 未启用或未切到 GitHub Actions 部署会导致 source.json 不可访问,运维,中,中,README 标明首次发布前检查 Pages 配置；workflow 使用 pages 写权限部署,维护者,进行中
+R004,fork 仓库缺少 Android 签名密钥会导致 tag 发布时 Android workflow 失败,CI,高,低,Android workflow 改为有密钥则签名、无密钥则构建未签名 APK artifact,开发者,已缓解
