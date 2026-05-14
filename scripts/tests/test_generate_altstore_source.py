@@ -61,6 +61,48 @@ class GenerateAltStoreSourceTest(unittest.TestCase):
         self.assertEqual(version["size"], 123)
         self.assertEqual(app["appPermissions"], {"entitlements": [], "privacy": {}})
 
+    def test_build_source_preserves_privacy_usage_descriptions(self) -> None:
+        metadata = {
+            "source": {
+                "name": "Nice View Source",
+                "featuredApps": ["com.ortlinde.niceview"],
+            },
+            "app": {
+                "name": "Nice View",
+                "bundleIdentifier": "com.ortlinde.niceview",
+                "developerName": "uucz",
+                "localizedDescription": "看图客户端",
+                "iconURL": "icon.svg",
+                "appPermissions": {
+                    "entitlements": [],
+                    "privacy": {
+                        "NSPhotoLibraryAddUsageDescription": "保存图片到系统相册",
+                    },
+                },
+            },
+        }
+
+        source = build_source(
+            metadata,
+            repository="uucz/NiceView",
+            version="0.2.2",
+            build_version="1",
+            release_tag="v0.2.2",
+            release_date="2026-05-14T00:00:00Z",
+            ipa_size=456,
+            download_url=None,
+            base_url=None,
+            release_notes=None,
+            min_os_version="12.0",
+        )
+
+        privacy = source["apps"][0]["appPermissions"]["privacy"]
+
+        self.assertEqual(
+            privacy,
+            {"NSPhotoLibraryAddUsageDescription": "保存图片到系统相册"},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

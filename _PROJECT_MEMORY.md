@@ -42,7 +42,7 @@
   - 当前产品完成了安装、随机浏览、标签、历史、下载和发布链的最小闭环。
   - P0 缺口是 iOS 保存图片语义不一致：当前非 Android 仅写入 App Documents，但 UI 文案提示已保存到系统相册。
   - API 公开能力远多于 App 当前能力，尤其是方向筛选、分类、include/exclude、标签列表、图集、元数据和反馈举报。
-  - 最终建议给原作者提 PR，但需要拆分并去除 fork 硬编码与 `_PROJECT_*` 项目记录文件。
+  - PR 暂不推进，等 fork 开发完成后再统一评估。
 
 ## 2026-05-14：后续实施路线图
 
@@ -54,5 +54,15 @@
 - 推荐路线：
   1. 先修 iOS 保存到系统相册。
   2. 再抽象 API 查询模型。
-  3. 再做标签发现、方向筛选、反馈入口、收藏分享。
-  4. 上游 PR 按发布链、iOS 保存、API 模型、筛选发现、反馈、收藏分享拆分。
+  3. 再做标签发现、方向筛选和收藏。
+  4. 反馈/举报和分享暂不做；上游 PR 暂停到 fork 功能稳定后再评估。
+
+## 2026-05-14：v0.2.2 iOS 保存相册实施
+
+- 目标：修复 iOS 点击保存后只写入 App Documents、但 UI 提示系统相册的问题。
+- 实施：
+  - Dart 层在 iOS 上改走 `nice_view/downloads` MethodChannel。
+  - iOS CI 生成工程后注入 Swift `AppDelegate.swift`，使用 Photos framework 保存到系统相册。
+  - `Info.plist` 注入 `NSPhotoLibraryAddUsageDescription` 和 `NSPhotoLibraryUsageDescription`。
+  - AltStore `metadata.json` 同步声明照片权限。
+  - 保存成功文案根据返回目的地显示“系统相册”或“应用文件”。

@@ -31,10 +31,18 @@ class DownloadService {
 
     if (Platform.isAndroid) {
       try {
-        return await _saveAndroid(bytes, fileName, mimeType);
+        return await _saveWithPlatformChannel(bytes, fileName, mimeType);
       } on PlatformException {
         await _requestAndroidPermissionBestEffort();
-        return _saveAndroid(bytes, fileName, mimeType);
+        return _saveWithPlatformChannel(bytes, fileName, mimeType);
+      }
+    }
+
+    if (Platform.isIOS) {
+      try {
+        return await _saveWithPlatformChannel(bytes, fileName, mimeType);
+      } on PlatformException catch (error) {
+        throw NiceViewException(error.message ?? '保存到系统相册失败');
       }
     }
 
@@ -44,7 +52,12 @@ class DownloadService {
     return output.path;
   }
 
-  Future<String> _saveAndroid(
+  static bool isSystemPhotoDestination(String destination) {
+    return destination.startsWith('content://') ||
+        destination.startsWith('photos://');
+  }
+
+  Future<String> _saveWithPlatformChannel(
     List<int> bytes,
     String fileName,
     String mimeType,

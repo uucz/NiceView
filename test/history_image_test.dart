@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nice_view/features/random_image/data/random_image_repository.dart';
 import 'package:nice_view/features/random_image/domain/history_image.dart';
 import 'package:nice_view/features/random_image/domain/random_image.dart';
+import 'package:nice_view/services/download_service.dart';
 
 void main() {
   test('empty history list can be sorted by callers', () {
@@ -62,5 +63,22 @@ void main() {
     expect(images.single.imageId, 99);
     expect(images.single.sourceTag, '原神');
     expect(images.single.fetchedAt, fetchedAt);
+  });
+
+  test('download destinations identify system photo libraries', () {
+    expect(
+      DownloadService.isSystemPhotoDestination(
+        'content://media/external/images/media/42',
+      ),
+      isTrue,
+    );
+    expect(
+      DownloadService.isSystemPhotoDestination('photos://saved'),
+      isTrue,
+    );
+    expect(
+      DownloadService.isSystemPhotoDestination('/tmp/nice_view_42.jpg'),
+      isFalse,
+    );
   });
 }

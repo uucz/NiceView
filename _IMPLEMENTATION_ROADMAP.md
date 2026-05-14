@@ -1,7 +1,7 @@
 # Nice View 后续实施路线图
 
 日期：2026-05-14  
-目标：把 v0.2.1 的“可安装随机浏览客户端”推进到“可长期使用、可筛选、可反馈、可给上游贡献”的版本。
+目标：把 v0.2.1 的“可安装随机浏览客户端”推进到“可长期使用、可筛选、可收藏”的版本。PR 暂不推进，等 fork 开发完成后再统一评估。
 
 ## 0. 证据摘要
 
@@ -10,14 +10,14 @@
 | 能力 | 接口 | 当前 App 使用 | 规划 |
 | --- | --- | --- | --- |
 | 随机图片流 | `GET /v1/random` | 已使用 | 继续保留 |
-| 固定图片流 | `GET /v1/image/{id}` | 已使用 | 用于预览、分享、缓存 |
+| 固定图片流 | `GET /v1/image/{id}` | 已使用 | 用于预览和缓存 |
 | 元数据 | `GET /v1/random/meta` | 未使用 | 当前图详情、方向、图集、标签 |
 | 标签列表 | `GET /v1/tags` | 未使用 | 标签搜索、标签发现 |
 | 精选标签 | `GET /v1/featured-tags` | 未使用 | 首屏推荐标签 |
 | 标签预览 | `GET /v1/tag/{name}/preview` | 未使用 | 标签选择前预览 |
 | 分类 | `GET /v1/categories` | 未使用 | 分类筛选 |
 | 筛选参数 | `orientation/category/include_tag/exclude_tag/include_category/exclude_category` | 仅 `tag` | 分阶段接入 |
-| 反馈 | `POST /v1/feedback` | 未使用 | 失效/违规/建议入口 |
+| 反馈 | `POST /v1/feedback` | 未使用 | 暂不接入 |
 | 站点配置 | `GET /v1/site-config` | 未使用 | 展示资源规模、公告、封禁策略 |
 
 已验证接口形态：
@@ -28,7 +28,7 @@
 - `/v1/random/meta?orientation=landscape` 可返回方向筛选后的元数据。
 - `/v1/random/meta?category=Cosplay&exclude_tag=AI%20Generated` 可组合筛选。
 - `/v1/tag/原神/preview` 返回 6 个 `image_ids`。
-- `/v1/feedback` body 为 `{ category, subject, message, contact }`。
+- `/v1/feedback` body 为 `{ category, subject, message, contact }`，但当前阶段暂不接入。
 
 ## 1. 阶段一：修复 iOS 保存语义
 
@@ -86,13 +86,12 @@
    - `featuredTags()`
    - `categories()`
    - `tagPreview(name)`
-   - `submitFeedback(request)`
+   - 暂不接入 `submitFeedback`
 
 3. 扩展 domain models
    - `ImageMeta`
    - `TagSummary`
    - `CategorySummary`
-   - `FeedbackRequest`
 
 4. 测试
    - query 参数编码测试，尤其中文标签、逗号多值、空值剔除。
@@ -135,70 +134,62 @@
 - 标签预览失败时有重试或错误状态。
 - 切换筛选不会展示旧筛选的预加载图片。
 
-## 4. 阶段四：反馈 / 举报入口
+## 4. 阶段四：收藏
 
 ### 用户目标
 
-看到问题图片时能立即反馈，不需要打开网页。
+用户能明确留下喜欢的图片，不被 30 张历史上限淘汰。
 
 ### 改造点
 
-1. 当前图片抽屉增加“反馈 / 举报”。
-2. 表单字段：
-   - 类型：`suggestion`、`broken_link`、`content_report`、`bug`、`other`
-   - 主题：自动填 `Nice View image #<id>`，用户可改。
-   - 内容：用户输入，并自动附加上下文。
-   - 联系方式：可选。
-3. 自动上下文：
-   - `imageId`
-   - `galleryId`
-   - `selectedTag`
-   - `orientation`
-   - `appVersion`
-   - `platform`
-
-### 验收标准
-
-- 成功后显示反馈编号。
-- 失败时展示服务端错误 detail。
-- 内容长度小于 2 时本地拦截。
-- 不在后台自动上传任何图片文件。
-
-## 5. 阶段五：收藏与分享
-
-### 用户目标
-
-用户能留下喜欢的图，并方便分享。
-
-### 改造点
-
-1. 收藏
-   - 新增收藏状态，不受 30 张历史淘汰影响。
-   - 历史页支持全部 / 收藏。
-   - 删除历史不删除收藏，除非用户明确删除文件。
-
-2. 分享
-   - 系统分享图片文件。
-   - 复制固定 URL：`https://veil.ortlinde.com/v1/image/{id}`。
-   - 复制图片 ID / 图集 ID。
+1. `HistoryImage` 增加收藏状态或新增 `FavoriteImage` 存储模型。
+2. 主图和历史预览增加收藏按钮。
+3. 历史页支持全部 / 收藏筛选。
+4. 历史淘汰时不删除收藏文件。
+5. 删除收藏需要明确二次确认。
 
 ### 验收标准
 
 - 浏览 30 张以上后，收藏图片仍保留。
-- 分享入口在 iOS 和 Android 都可用。
-- 没有 imageId 的图片不显示复制固定 URL。
+- 收藏图片在重启后仍能打开。
+- 删除历史不会误删收藏。
+- 删除收藏时用户明确知道会移除本地缓存文件。
 
-## 6. 阶段六：上游 PR 拆分
+## 5. 阶段五：整理发布与回归
 
-### 推荐顺序
+### 用户目标
+
+每一批功能完成后能稳定发布，不回退 AltStore、Android 或基础浏览体验。
+
+### 改造点
+
+1. 每个阶段合并前跑 Flutter analyze/test。
+2. 每个用户可见阶段打 tag，走 Android 与 iOS/AltStore workflow。
+3. 实机检查：
+   - iOS AltStore 更新。
+   - iOS 保存相册。
+   - Android 随机浏览和保存。
+   - 标签筛选与历史。
+4. 更新 `_PROJECT_*` 记录。
+
+### 验收标准
+
+- Release 含 Android APK、iOS IPA 和 source.json。
+- `source.json` 可访问且 size 与 IPA 一致。
+- 实机确认新版本能安装/更新。
+
+## 6. 上游 PR 暂停策略
+
+当前不向上游提 PR。等 fork 功能完成并稳定后，再统一评估是否拆分贡献。
+
+未来如需提 PR，推荐顺序：
 
 1. Issue / Discussion：说明 fork 已验证 iOS + AltStore，询问维护者是否愿意接收。
 2. PR 1：上游中立的 iOS / AltStore 发布链。
 3. PR 2：iOS 保存到系统相册。
 4. PR 3：API query / models 重构，不改变 UI。
 5. PR 4：标签发现 + 方向筛选。
-6. PR 5：反馈 / 举报入口。
-7. PR 6：收藏 / 分享。
+6. PR 5：收藏。
 
 ### 上游 PR 必须清理
 
@@ -215,7 +206,7 @@
 | R101 | iOS Photos 权限与 AltStore 元数据不一致 | 安装或运行失败 | 同步 Info.plist 和 `altstore/metadata.json`，实机验证 |
 | R102 | API 筛选能力强，但 UI 一次性暴露太多 | 用户困惑 | 分阶段上线，先精选标签和方向 |
 | R103 | 标签总量超过 11 万，直接全量加载会卡顿 | 性能问题 | 分页、搜索、缓存精选标签 |
-| R104 | 反馈入口可能被滥用 | 服务端限流触发 | 保持服务端每 IP 限流，客户端不重试刷提交 |
+| R104 | API 规划中存在反馈接口但当前不接入 | 需求边界漂移 | 路线图明确标记暂不接入，避免开发偏航 |
 | R105 | 收藏与历史文件生命周期混乱 | 用户丢图 | 明确收藏不自动淘汰，删除动作二次确认 |
 | R106 | 上游不接受发布链 PR | 协作失败 | 先开 issue，PR 拆小，保持 fork 可独立维护 |
 
@@ -236,5 +227,5 @@
 
 1. 它修复真实用户已安装后的核心信任问题。
 2. 改动范围相对集中。
-3. 它是给上游提 PR 前最能体现质量的补强。
+3. 它是后续所有 iOS 用户体验的质量底座。
 4. 它会迫使我们决定是否提交 `ios/` 目录，这影响后续所有 iOS 功能维护方式。

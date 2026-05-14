@@ -362,9 +362,13 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         }
       }
 
-      await _downloadService.saveImage(imageToSave);
+      final destination = await _downloadService.saveImage(imageToSave);
       if (mounted) {
-        state = state.copyWith(errorMessage: '已保存到系统相册');
+        state = state.copyWith(
+          errorMessage: DownloadService.isSystemPhotoDestination(destination)
+              ? '已保存到系统相册'
+              : '已保存到应用文件',
+        );
       }
     } catch (error) {
       if (mounted) {

@@ -13,13 +13,16 @@
     "bundleIdentifier": "com.ortlinde.niceview",
     "developerName": "itsmorninghao / uucz",
     "subtitle": "Ortlinde Veil 随机图片浏览客户端。",
-    "localizedDescription": "Nice View 是 veil.ortlinde.com 的轻量图片浏览客户端，支持随机浏览、标签筛选、历史记录和本地保存。",
+    "localizedDescription": "Nice View 是 veil.ortlinde.com 的轻量图片浏览客户端，支持随机浏览、标签筛选、历史记录和保存到系统相册。",
     "iconURL": "icon.svg",
     "tintColor": "#D9A441",
     "category": "photo-video",
     "appPermissions": {
       "entitlements": [],
-      "privacy": {}
+      "privacy": {
+        "NSPhotoLibraryAddUsageDescription": "Nice View 需要将图片保存到系统相册。",
+        "NSPhotoLibraryUsageDescription": "Nice View 需要将图片保存到系统相册。"
+      }
     }
   }
 }

@@ -130,7 +130,7 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
     setState(() => _isSaving = true);
     try {
       final image = widget.images[_index];
-      await ref.read(downloadServiceProvider).saveImage(
+      final destination = await ref.read(downloadServiceProvider).saveImage(
             RandomImage(
               localFilePath: image.localFilePath,
               imageId: image.imageId,
@@ -144,7 +144,13 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已保存到系统相册')),
+        SnackBar(
+          content: Text(
+            DownloadService.isSystemPhotoDestination(destination)
+                ? '已保存到系统相册'
+                : '已保存到应用文件',
+          ),
+        ),
       );
     } catch (_) {
       if (!mounted) {

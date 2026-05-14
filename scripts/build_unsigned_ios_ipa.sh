@@ -29,15 +29,27 @@ fi
 
 flutter create --platforms=ios --org "$IOS_ORG" --project-name "$IOS_PROJECT_NAME" .
 
+set_plist_string() {
+  local key="$1"
+  local value="$2"
+  local plist="ios/Runner/Info.plist"
+
+  if /usr/libexec/PlistBuddy -c "Print :$key" "$plist" >/dev/null 2>&1; then
+    /usr/libexec/PlistBuddy -c "Set :$key $value" "$plist"
+  else
+    /usr/libexec/PlistBuddy -c "Add :$key string $value" "$plist"
+  fi
+}
+
 IOS_BUNDLE_ID="$IOS_BUNDLE_ID" /usr/bin/perl -0pi -e \
   's/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = $ENV{IOS_BUNDLE_ID};/g' \
   ios/Runner.xcodeproj/project.pbxproj
 
-if /usr/libexec/PlistBuddy -c "Print :CFBundleDisplayName" ios/Runner/Info.plist >/dev/null 2>&1; then
-  /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName Nice View" ios/Runner/Info.plist
-else
-  /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string Nice View" ios/Runner/Info.plist
-fi
+set_plist_string "CFBundleDisplayName" "Nice View"
+set_plist_string "NSPhotoLibraryAddUsageDescription" "Nice View 需要将图片保存到系统相册。"
+set_plist_string "NSPhotoLibraryUsageDescription" "Nice View 需要将图片保存到系统相册。"
+
+cp scripts/templates/ios/AppDelegate.swift ios/Runner/AppDelegate.swift
 
 flutter pub get
 flutter build ios --release --no-codesign --build-name "$VERSION" --build-number "$BUILD_VERSION"
