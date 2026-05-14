@@ -105,3 +105,21 @@
   - 新增独立收藏缓存 `FavoriteStore`，收藏文件写入 `Application Support/favorites`，不受 30 张历史上限淘汰影响。
   - 历史页增加全部/收藏切换，主图和历史预览均可收藏/取消收藏。
 - 发布策略：功能已开发完毕，接下来统一打 `v0.3.0` 标签跑 iOS/Android CI 与 AltStore 发布。
+
+## 2026-05-14：v0.3.0 发布验证
+
+- 标签：`v0.3.0`
+- 提交：`c6e8ea7 feat: add discovery filters and favorites`
+- Actions：
+  - `iOS AltStore Release` 成功，run id：`25850852113`
+  - `Android Release APK` 成功，run id：`25850852103`
+- Release：`https://github.com/uucz/NiceView/releases/tag/v0.3.0`
+- AltStore 源：`https://uucz.github.io/NiceView/source.json`
+- IPA：`https://github.com/uucz/NiceView/releases/download/v0.3.0/niceview-unsigned.ipa`
+- 验证结果：
+  - iOS workflow 中 `Analyze and test`、IPA 构建、source.json 生成、Release 上传、Pages 部署全部成功。
+  - Android workflow 中 `Analyze`、`Test`、release APK 构建和 artifact 上传全部成功。
+  - `source.json` 已发布为 `0.3.0+1`，下载地址指向 `v0.3.0/niceview-unsigned.ipa`。
+  - Release 资产包含 `niceview-unsigned.ipa` 和 `source.json`；IPA 大小为 `7107686` 字节，和源内 `size` 一致。
+  - IPA 下载地址经重定向后返回 HTTP `200`，`content-type` 为 `application/octet-stream`。
+- 待验证：用户在 iOS 设备通过 AltStore 更新 `v0.3.0` 后，实测系统相册保存、标签发现/方向筛选、收藏。

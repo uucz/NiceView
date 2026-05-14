@@ -6,5 +6,5 @@ R004,fork 仓库缺少 Android 签名密钥会导致 tag 发布时 Android workf
 R005,iOS Photos 权限描述与 AltStore source.json 不一致会导致安装或运行异常,发布风险,中,高,Info.plist 注入 NSPhotoLibraryAddUsageDescription/NSPhotoLibraryUsageDescription，并在 AltStore metadata 中同步声明；v0.2.2 source.json 和 IPA 发布资产大小已核对一致,开发者,已缓解
 R006,iOS Photos 保存链路需要实机授权和相册写入确认,回归风险,高,高,v0.2.2 实机失败；已本地修复历史路径自愈、MethodChannel 注册和原始文件 URL 写入 Photos，待 v0.3.0 发布后实机确认,用户,进行中
 R007,GitHub Actions Node.js 20 runtime 将被 GitHub runner 淘汰,CI,中,中,跟踪 actions/checkout、configure-pages、deploy-pages、upload-artifact、setup-java 与 softprops/action-gh-release 的 Node.js 24 支持并适时升级,维护者,待处理
-R008,频繁打 tag 触发 iOS/Android 发布 CI 会拖慢开发节奏,流程,高,中,中间修复仅本地验证并提交；iOS 保存、筛选发现和收藏已完成，准备统一跑发布 CI,开发者,已缓解
+R008,频繁打 tag 触发 iOS/Android 发布 CI 会拖慢开发节奏,流程,高,中,中间修复仅本地验证并提交；iOS 保存、筛选发现和收藏完成后已统一跑 v0.3.0 发布 CI,开发者,已缓解
 R009,标签预览会一次性拉取多张图片,性能,中,中,预览限制使用 API 返回的 6 张 image_id，并提供失败重试；后续如压力明显再接缩略图或缓存清理,开发者,进行中

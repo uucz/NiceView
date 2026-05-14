@@ -16,3 +16,8 @@ E014,GitHub Release,curl,NiceView v0.2.2 assets,v0.2.2,2026-05-14,2026-05-14,htt
 E015,GitHub Release,curl,NiceView v0.2.2 IPA HEAD,v0.2.2,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/releases/download/v0.2.2/niceview-unsigned.ipa,下载验证,确认 IPA 下载地址重定向后返回 HTTP 200 与 application/octet-stream
 E016,实机验证,用户确认,Nice View iOS 保存失败,v0.2.2,2026-05-14,2026-05-14,N/A,iOS 保存回归,浏览记录保存提示图片可能不在本机；主页保存提示网络连接失败
 E017,本地验证,unittest/bash/git,NiceView v0.3.0 local checks,v0.3.0,2026-05-14,2026-05-14,N/A,本地验证,python unittest/scripts bash -n/git diff --check 通过；本机无 flutter 和 dart
+E018,GitHub Actions,GitHub CLI,iOS AltStore Release run 25850852113,v0.3.0,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/actions/runs/25850852113,发布验证,确认 analyze/test/iOS IPA/source.json/Release 上传/Pages 部署全部成功
+E019,GitHub Actions,GitHub CLI,Android Release APK run 25850852103,v0.3.0,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/actions/runs/25850852103,发布验证,确认 Android analyze/test/release APK artifact 全部成功
+E020,GitHub Pages,curl,Nice View source.json,v0.3.0,2026-05-14,2026-05-14,https://uucz.github.io/NiceView/source.json,AltStore 源验证,确认源文件已切到 0.3.0 且 IPA size 为 7107686
+E021,GitHub Release,curl,NiceView v0.3.0 assets,v0.3.0,2026-05-14,2026-05-14,https://api.github.com/repos/uucz/NiceView/releases/tags/v0.3.0,发布资产验证,确认 niceview-unsigned.ipa 与 source.json 已上传且 IPA 大小为 7107686
+E022,GitHub Release,curl,NiceView v0.3.0 IPA HEAD,v0.3.0,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/releases/download/v0.3.0/niceview-unsigned.ipa,下载验证,确认 IPA 下载地址重定向后返回 HTTP 200 与 application/octet-stream
