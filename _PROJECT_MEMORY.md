@@ -34,3 +34,12 @@
 - IPA：`https://github.com/uucz/NiceView/releases/download/v0.2.1/niceview-unsigned.ipa`
 - 验证结果：`source.json` 已通过 `curl -L` 访问，Release 资产中 `niceview-unsigned.ipa` 大小为 `7052796` 字节，与源内 `size` 一致。
 - 实机验证：用户已确认在 iOS 设备的 AltStore 中添加源并安装正常，权限校验与签名流程通过。
+
+## 2026-05-14：产品视角缺口分析
+
+- 产物：`_PRODUCT_REVIEW.md`
+- 关键结论：
+  - 当前产品完成了安装、随机浏览、标签、历史、下载和发布链的最小闭环。
+  - P0 缺口是 iOS 保存图片语义不一致：当前非 Android 仅写入 App Documents，但 UI 文案提示已保存到系统相册。
+  - API 公开能力远多于 App 当前能力，尤其是方向筛选、分类、include/exclude、标签列表、图集、元数据和反馈举报。
+  - 最终建议给原作者提 PR，但需要拆分并去除 fork 硬编码与 `_PROJECT_*` 项目记录文件。
