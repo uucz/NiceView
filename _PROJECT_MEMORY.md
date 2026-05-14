@@ -43,3 +43,16 @@
   - P0 缺口是 iOS 保存图片语义不一致：当前非 Android 仅写入 App Documents，但 UI 文案提示已保存到系统相册。
   - API 公开能力远多于 App 当前能力，尤其是方向筛选、分类、include/exclude、标签列表、图集、元数据和反馈举报。
   - 最终建议给原作者提 PR，但需要拆分并去除 fork 硬编码与 `_PROJECT_*` 项目记录文件。
+
+## 2026-05-14：后续实施路线图
+
+- 产物：`_IMPLEMENTATION_ROADMAP.md`
+- API 验证：
+  - `/v1/site-config` 返回资源规模、精选分类、公告和封禁策略。
+  - `/v1/featured-tags`、`/v1/categories`、`/v1/tags`、`/v1/random/meta`、`/v1/tag/{name}/preview` 已验证可用。
+  - `/v1/feedback` body 为 `{ category, subject, message, contact }`。
+- 推荐路线：
+  1. 先修 iOS 保存到系统相册。
+  2. 再抽象 API 查询模型。
+  3. 再做标签发现、方向筛选、反馈入口、收藏分享。
+  4. 上游 PR 按发布链、iOS 保存、API 模型、筛选发现、反馈、收藏分享拆分。
