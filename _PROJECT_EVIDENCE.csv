@@ -22,3 +22,10 @@ E020,GitHub Pages,curl,Nice View source.json,v0.3.0,2026-05-14,2026-05-14,https:
 E021,GitHub Release,curl,NiceView v0.3.0 assets,v0.3.0,2026-05-14,2026-05-14,https://api.github.com/repos/uucz/NiceView/releases/tags/v0.3.0,发布资产验证,确认 niceview-unsigned.ipa 与 source.json 已上传且 IPA 大小为 7107686
 E022,GitHub Release,curl,NiceView v0.3.0 IPA HEAD,v0.3.0,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/releases/download/v0.3.0/niceview-unsigned.ipa,下载验证,确认 IPA 下载地址重定向后返回 HTTP 200 与 application/octet-stream
 E023,实机验证,用户确认,Nice View v0.3.0 iOS 验收,v0.3.0,2026-05-14,2026-05-14,N/A,iOS 实机验收,主页保存和浏览记录保存均进入系统 Photos；方向/分类/标签预览可用；收藏重启后仍保留
+E024,API,curl,veil site-config post v0.3.0,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/site-config,产品探索,确认规模约 63763 图集 444108 图片 117187 标签 44 分类并公告随机和固定图片接口限流策略
+E025,API,curl,veil tags sample,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/tags?limit=12,标签探索,确认标签总数约 117187 且前 12 项仅代表热门排序样本
+E026,网页,curl,veil 全部标签页面,N/A,N/A,2026-05-14,https://veil.ortlinde.com/tags,标签探索,确认 Web 端使用 limit=20000 加本地搜索排序和字母索引
+E027,API,curl,veil galleries and gallery detail,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/galleries?limit=3,图集探索,确认图集列表与详情提供分页 图片序列 标签 分类 来源页和外部下载链接
+E028,本地代码,rg/sed,RandomImagePage 侧栏入口,v0.3.0,2026-05-14,2026-05-14,N/A,可发现性,确认主界面主要依赖左滑打开侧栏且没有显式筛选菜单按钮
+E029,本地代码,rg/sed,tagPreviewImages quota path,v0.3.0,2026-05-14,2026-05-14,N/A,可靠性,确认标签预览中的 imageById 调用未经过 quotaGuardedFetch 需要后续修正
+E030,本地代码,sed,SideInfoDrawer discovery scope,v0.3.0,2026-05-14,2026-05-14,N/A,标签探索,确认 App 侧栏仅对已加载的 featuredTags 与 popularTags 做本地过滤
