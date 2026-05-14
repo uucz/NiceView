@@ -8,12 +8,14 @@ import '../../domain/history_image.dart';
 class HistoryGrid extends StatelessWidget {
   const HistoryGrid({
     required this.images,
+    this.favoriteImageIds = const <int?>{},
     required this.onOpen,
     required this.onDelete,
     super.key,
   });
 
   final List<HistoryImage> images;
+  final Set<int?> favoriteImageIds;
   final ValueChanged<HistoryImage> onOpen;
   final ValueChanged<HistoryImage> onDelete;
 
@@ -46,17 +48,33 @@ class HistoryGrid extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             child: ColoredBox(
               color: Colors.white.withValues(alpha: 0.06),
-              child: Image.file(
-                File(image.localFilePath),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) {
-                  return const Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: niceMuted,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.file(
+                    File(image.localFilePath),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) {
+                      return const Center(
+                        child: Icon(
+                          Icons.broken_image_outlined,
+                          color: niceMuted,
+                        ),
+                      );
+                    },
+                  ),
+                  if (image.imageId != null &&
+                      favoriteImageIds.contains(image.imageId))
+                    const Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Icon(
+                        Icons.favorite_rounded,
+                        color: niceDanger,
+                        size: 18,
+                      ),
                     ),
-                  );
-                },
+                ],
               ),
             ),
           ),

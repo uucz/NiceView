@@ -43,6 +43,7 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(randomImageControllerProvider);
     if (widget.images.isEmpty) {
       return Scaffold(
         backgroundColor: Colors.black,
@@ -52,6 +53,11 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
         ),
       );
     }
+
+    final current = widget.images[_index];
+    final currentImageId = current.imageId;
+    final isFavorite = currentImageId != null &&
+        state.favoriteImages.any((image) => image.imageId == currentImageId);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -111,6 +117,34 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.black.withValues(alpha: 0.50),
                     foregroundColor: niceText,
+                    disabledBackgroundColor:
+                        Colors.black.withValues(alpha: 0.32),
+                    disabledForegroundColor: niceText.withValues(alpha: 0.58),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 22, bottom: 22),
+                child: IconButton.filled(
+                  tooltip: isFavorite ? '取消收藏' : '收藏',
+                  onPressed: _isSaving
+                      ? null
+                      : () => ref
+                          .read(randomImageControllerProvider.notifier)
+                          .toggleHistoryFavorite(current),
+                  icon: Icon(
+                    isFavorite
+                        ? Icons.favorite_rounded
+                        : Icons.favorite_border_rounded,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.black.withValues(alpha: 0.50),
+                    foregroundColor: isFavorite ? niceDanger : niceText,
                     disabledBackgroundColor:
                         Colors.black.withValues(alpha: 0.32),
                     disabledForegroundColor: niceText.withValues(alpha: 0.58),

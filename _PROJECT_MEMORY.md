@@ -94,3 +94,14 @@
   - 主页保存的网络错误不一定来自网络，`MissingPluginException` 等保存链路异常会落入通用兜底，需要改成明确保存错误。
   - iOS 原生保存不应依赖 `UIImage(data:)` 解码，改为将原始图片字节写入临时文件，再通过 `PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL:)` 写入 Photos。
 - 执行策略：先本地修复和记录，不打新 tag、不触发发布 CI；等筛选发现和收藏等计划功能完成后统一跑 CI 与发布。
+
+## 2026-05-14：v0.3.0 功能实现
+
+- 实施范围：
+  - 新增 `ImageQuery`、`ImageMeta`、`TagSummary`、`CategorySummary`、`TagPreview`。
+  - `VeilApiClient` 接入 `/v1/random/meta`、`/v1/featured-tags`、`/v1/tags`、`/v1/categories`、`/v1/tag/{name}/preview`。
+  - 随机图流支持方向、分类、排除标签等 query 参数，并按 `queryKey` 隔离预加载队列。
+  - 侧栏加入方向筛选、分类筛选、标签发现、本地标签过滤、标签预览和排除标签。
+  - 新增独立收藏缓存 `FavoriteStore`，收藏文件写入 `Application Support/favorites`，不受 30 张历史上限淘汰影响。
+  - 历史页增加全部/收藏切换，主图和历史预览均可收藏/取消收藏。
+- 发布策略：功能已开发完毕，接下来统一打 `v0.3.0` 标签跑 iOS/Android CI 与 AltStore 发布。

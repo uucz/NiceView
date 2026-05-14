@@ -2,6 +2,13 @@
 
 一款神奇的看图软件，可以方便的查看和下载一些很nice的图片。
 
+当前 fork 补齐了 iOS / AltStore 安装链，并加入：
+
+- iOS 保存到系统相册
+- 方向筛选、分类筛选、标签发现和标签预览
+- 独立收藏缓存，收藏不会被浏览历史上限淘汰
+- 浏览历史与收藏视图
+
 ## iOS / AltStore
 
 本 fork 增加了 iOS 未签名 IPA 与 AltStore Classic 源的自动发布流程。打 `v*` 标签后，GitHub Actions 会：
@@ -31,7 +38,7 @@ https://uucz.github.io/NiceView/source.json
 本地或 CI 构建未签名 IPA：
 
 ```bash
-scripts/build_unsigned_ios_ipa.sh 0.2.1 1
+scripts/build_unsigned_ios_ipa.sh 0.3.0 1
 ```
 
 ## 友情链接

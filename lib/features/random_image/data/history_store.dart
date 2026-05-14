@@ -92,6 +92,13 @@ class HistoryStore {
         galleryId: image.galleryId,
         contentType: image.contentType,
         sourceTag: image.sourceTag,
+        queryKey: image.queryKey,
+        width: image.width,
+        height: image.height,
+        orientation: image.orientation,
+        galleryTitle: image.galleryTitle,
+        galleryCategory: image.galleryCategory,
+        tags: image.tags,
         fetchedAt: image.fetchedAt,
         viewedAt: now,
       );
@@ -104,6 +111,13 @@ class HistoryStore {
         galleryId: image.galleryId,
         contentType: image.contentType,
         sourceTag: image.sourceTag,
+        queryKey: image.queryKey,
+        width: image.width,
+        height: image.height,
+        orientation: image.orientation,
+        galleryTitle: image.galleryTitle,
+        galleryCategory: image.galleryCategory,
+        tags: image.tags,
         fetchedAt: image.fetchedAt,
         viewedAt: now,
       );
@@ -149,7 +163,7 @@ class HistoryStore {
     return images;
   }
 
-  Future<List<RandomImage>> loadPreloadQueue({String? selectedTag}) async {
+  Future<List<RandomImage>> loadPreloadQueue({required String queryKey}) async {
     final savedImages = await _loadSavedPreloadQueue();
     if (savedImages.isEmpty) {
       return <RandomImage>[];
@@ -157,7 +171,7 @@ class HistoryStore {
 
     final images = <RandomImage>[];
     for (final image in savedImages) {
-      if (image.sourceTag != selectedTag) {
+      if (image.queryKey != queryKey) {
         await _deleteFile(image.localFilePath);
         continue;
       }
@@ -175,7 +189,7 @@ class HistoryStore {
 
   Future<List<RandomImage>> savePreloadQueue(
     List<RandomImage> images, {
-    String? selectedTag,
+    required String queryKey,
     Set<String> preservePaths = const <String>{},
   }) async {
     final previousImages = await _loadSavedPreloadQueue();
@@ -186,7 +200,7 @@ class HistoryStore {
 
     final retained = <RandomImage>[];
     for (final image in images.take(_maxPreload)) {
-      if (image.sourceTag != selectedTag || !await image.file.exists()) {
+      if (image.queryKey != queryKey || !await image.file.exists()) {
         continue;
       }
       final cachePath = await _copyIntoPreloadCache(image);

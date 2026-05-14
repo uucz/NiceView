@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'image_query.dart';
+
 class HistoryImage {
   const HistoryImage({
     required this.historyId,
@@ -11,6 +13,13 @@ class HistoryImage {
     this.galleryId,
     this.contentType,
     this.sourceTag,
+    this.queryKey,
+    this.width,
+    this.height,
+    this.orientation,
+    this.galleryTitle,
+    this.galleryCategory,
+    this.tags = const <String>[],
   });
 
   final String historyId;
@@ -19,6 +28,13 @@ class HistoryImage {
   final int? galleryId;
   final String? contentType;
   final String? sourceTag;
+  final String? queryKey;
+  final int? width;
+  final int? height;
+  final ImageOrientation? orientation;
+  final String? galleryTitle;
+  final String? galleryCategory;
+  final List<String> tags;
   final DateTime fetchedAt;
   final DateTime viewedAt;
 
@@ -32,6 +48,13 @@ class HistoryImage {
     int? galleryId,
     String? contentType,
     String? sourceTag,
+    String? queryKey,
+    int? width,
+    int? height,
+    ImageOrientation? orientation,
+    String? galleryTitle,
+    String? galleryCategory,
+    List<String>? tags,
   }) {
     return HistoryImage(
       historyId: historyId,
@@ -40,6 +63,13 @@ class HistoryImage {
       galleryId: galleryId ?? this.galleryId,
       contentType: contentType ?? this.contentType,
       sourceTag: sourceTag ?? this.sourceTag,
+      queryKey: queryKey ?? this.queryKey,
+      width: width ?? this.width,
+      height: height ?? this.height,
+      orientation: orientation ?? this.orientation,
+      galleryTitle: galleryTitle ?? this.galleryTitle,
+      galleryCategory: galleryCategory ?? this.galleryCategory,
+      tags: tags ?? this.tags,
       fetchedAt: fetchedAt ?? this.fetchedAt,
       viewedAt: viewedAt ?? this.viewedAt,
     );
@@ -53,6 +83,13 @@ class HistoryImage {
       'galleryId': galleryId,
       'contentType': contentType,
       'sourceTag': sourceTag,
+      'queryKey': queryKey,
+      'width': width,
+      'height': height,
+      'orientation': orientation?.apiValue,
+      'galleryTitle': galleryTitle,
+      'galleryCategory': galleryCategory,
+      'tags': tags,
       'fetchedAt': fetchedAt.toIso8601String(),
       'viewedAt': viewedAt.toIso8601String(),
     };
@@ -66,6 +103,16 @@ class HistoryImage {
       galleryId: json['galleryId'] as int?,
       contentType: json['contentType'] as String?,
       sourceTag: json['sourceTag'] as String?,
+      queryKey: json['queryKey'] as String?,
+      width: json['width'] as int?,
+      height: json['height'] as int?,
+      orientation:
+          ImageOrientation.fromApiValue(json['orientation'] as String?),
+      galleryTitle: json['galleryTitle'] as String?,
+      galleryCategory: json['galleryCategory'] as String?,
+      tags: (json['tags'] as List<dynamic>? ?? const <dynamic>[])
+          .map((item) => item.toString())
+          .toList(),
       fetchedAt: DateTime.parse(json['fetchedAt'] as String),
       viewedAt: DateTime.parse(json['viewedAt'] as String),
     );

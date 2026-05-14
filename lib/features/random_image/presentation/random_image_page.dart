@@ -12,6 +12,7 @@ import 'widgets/floating_next_button.dart';
 import 'widgets/image_stage.dart';
 import 'widgets/server_lockout_overlay.dart';
 import 'widgets/side_info_drawer.dart';
+import 'widgets/tag_preview_sheet.dart';
 
 class RandomImagePage extends ConsumerStatefulWidget {
   const RandomImagePage({super.key});
@@ -87,6 +88,10 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                     (state.preloadQueue.isNotEmpty || quota.canAcquire);
                 final drawerDragEnabled =
                     !state.isImageZoomed && !quota.isServerLocked;
+                final currentImageId = state.currentImage?.imageId;
+                final isCurrentFavorite = currentImageId != null &&
+                    state.favoriteImages
+                        .any((image) => image.imageId == currentImageId);
 
                 return Stack(
                   fit: StackFit.expand,
@@ -126,6 +131,32 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                               },
                               onHorizontalDragEnd: _handleDrawerDragEnd,
                               onZoomChanged: controller.setImageZoomed,
+                            ),
+                            Positioned(
+                              top: padding.top + 18,
+                              right: 22,
+                              child: IconButton.filled(
+                                tooltip: isCurrentFavorite ? '取消收藏' : '收藏',
+                                onPressed: state.currentImage == null
+                                    ? null
+                                    : controller.toggleCurrentFavorite,
+                                icon: Icon(
+                                  isCurrentFavorite
+                                      ? Icons.favorite_rounded
+                                      : Icons.favorite_border_rounded,
+                                ),
+                                style: IconButton.styleFrom(
+                                  backgroundColor:
+                                      Colors.black.withValues(alpha: 0.48),
+                                  foregroundColor: isCurrentFavorite
+                                      ? niceDanger
+                                      : niceText,
+                                  disabledBackgroundColor:
+                                      Colors.black.withValues(alpha: 0.24),
+                                  disabledForegroundColor:
+                                      niceMuted.withValues(alpha: 0.5),
+                                ),
+                              ),
                             ),
                             Positioned(
                               left: 22,
@@ -168,6 +199,22 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                         },
                         onAddTag: _showAddTagSheet,
                         onDeleteTag: (tag) => _confirmDeleteTag(tag),
+                        onOrientationSelected: (orientation) {
+                          _closeDrawer();
+                          controller.switchOrientation(orientation);
+                        },
+                        onCategorySelected: (category) {
+                          _closeDrawer();
+                          controller.switchCategory(category);
+                        },
+                        onPreviewTag: _showTagPreview,
+                        onToggleExcludeTag: (tag) {
+                          controller.toggleExcludedTag(tag);
+                        },
+                        onClearFilters: () {
+                          _closeDrawer();
+                          controller.clearFilters();
+                        },
                         onOpenHistory: _openHistory,
                       ),
                     ),
@@ -294,6 +341,22 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
     _closeDrawer();
     await Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (_) => const HistoryPage()),
+    );
+  }
+
+  Future<void> _showTagPreview(String tag) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF17181A),
+      builder: (context) => TagPreviewSheet(
+        tag: tag,
+        onUseTag: (tag) {
+          Navigator.of(context).pop();
+          _closeDrawer();
+          ref.read(randomImageControllerProvider.notifier).switchTag(tag);
+        },
+      ),
     );
   }
 }

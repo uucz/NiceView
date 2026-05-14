@@ -15,3 +15,4 @@ E013,GitHub Pages,curl,Nice View source.json,v0.2.2,2026-05-14,2026-05-14,https:
 E014,GitHub Release,curl,NiceView v0.2.2 assets,v0.2.2,2026-05-14,2026-05-14,https://api.github.com/repos/uucz/NiceView/releases/tags/v0.2.2,发布资产验证,确认 niceview-unsigned.ipa 与 source.json 已上传且 IPA 大小为 7062007
 E015,GitHub Release,curl,NiceView v0.2.2 IPA HEAD,v0.2.2,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/releases/download/v0.2.2/niceview-unsigned.ipa,下载验证,确认 IPA 下载地址重定向后返回 HTTP 200 与 application/octet-stream
 E016,实机验证,用户确认,Nice View iOS 保存失败,v0.2.2,2026-05-14,2026-05-14,N/A,iOS 保存回归,浏览记录保存提示图片可能不在本机；主页保存提示网络连接失败
+E017,本地验证,unittest/bash/git,NiceView v0.3.0 local checks,v0.3.0,2026-05-14,2026-05-14,N/A,本地验证,python unittest/scripts bash -n/git diff --check 通过；本机无 flutter 和 dart

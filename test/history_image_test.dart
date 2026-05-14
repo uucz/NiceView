@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nice_view/features/random_image/data/random_image_repository.dart';
 import 'package:nice_view/features/random_image/domain/history_image.dart';
+import 'package:nice_view/features/random_image/domain/image_query.dart';
 import 'package:nice_view/features/random_image/domain/random_image.dart';
 import 'package:nice_view/services/download_service.dart';
 
@@ -80,5 +81,47 @@ void main() {
       DownloadService.isSystemPhotoDestination('/tmp/nice_view_42.jpg'),
       isFalse,
     );
+  });
+
+  test('image query encodes filters and stable cache keys', () {
+    const query = ImageQuery(
+      tag: '原神',
+      orientation: ImageOrientation.portrait,
+      category: 'Cosplay',
+      excludeTags: ['AI Generated'],
+    );
+
+    expect(query.toQueryParameters(), {
+      'tag': '原神',
+      'orientation': 'portrait',
+      'category': 'Cosplay',
+      'exclude_tag': 'AI Generated',
+    });
+    expect(
+      query.cacheKey,
+      'category=Cosplay&exclude_tag=AI Generated&orientation=portrait&tag=原神',
+    );
+    expect(query.summary, '原神 / 竖图 / Cosplay / 已排除 1');
+  });
+
+  test('image metadata parses gallery and tags', () {
+    final meta = ImageMeta.fromJson({
+      'id': 53778,
+      'width': 1200,
+      'height': 800,
+      'orientation': 'landscape',
+      'sort_order': 15,
+      'gallery': {
+        'id': 921,
+        'title': 'MetArt Yanika',
+        'category': 'Europe',
+      },
+      'tags': ['Metart', 'Veto'],
+    });
+
+    expect(meta.id, 53778);
+    expect(meta.orientation, ImageOrientation.landscape);
+    expect(meta.gallery?.category, 'Europe');
+    expect(meta.tags, ['Metart', 'Veto']);
   });
 }

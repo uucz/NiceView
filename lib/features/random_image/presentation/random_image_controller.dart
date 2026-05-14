@@ -9,9 +9,11 @@ import '../../../services/app_exceptions.dart';
 import '../../../services/download_service.dart';
 import '../../../services/quota_service.dart';
 import '../../tags/data/local_tag_store.dart';
+import '../data/favorite_store.dart';
 import '../data/history_store.dart';
 import '../data/random_image_repository.dart';
 import '../domain/history_image.dart';
+import '../domain/image_query.dart';
 import '../domain/quota_state.dart';
 import '../domain/random_image.dart';
 
@@ -21,6 +23,7 @@ final randomImageControllerProvider =
     repository: ref.watch(randomImageRepositoryProvider),
     tagStore: ref.watch(localTagStoreProvider),
     historyStore: ref.watch(historyStoreProvider),
+    favoriteStore: ref.watch(favoriteStoreProvider),
     downloadService: ref.watch(downloadServiceProvider),
     quotaController: ref.read(quotaControllerProvider.notifier),
     readQuotaState: () => ref.read(quotaControllerProvider),
@@ -45,6 +48,12 @@ class RandomImageViewState {
     required this.isPreloading,
     required this.isNextLoading,
     required this.isDownloading,
+    required this.query,
+    required this.featuredTags,
+    required this.popularTags,
+    required this.categories,
+    required this.isDiscoveryLoading,
+    required this.favoriteImages,
     this.currentImage,
     this.selectedTag,
     this.errorMessage,
@@ -64,6 +73,12 @@ class RandomImageViewState {
       isPreloading: false,
       isNextLoading: false,
       isDownloading: false,
+      query: ImageQuery(),
+      featuredTags: [],
+      popularTags: [],
+      categories: [],
+      isDiscoveryLoading: false,
+      favoriteImages: [],
     );
   }
 
@@ -80,6 +95,12 @@ class RandomImageViewState {
   final bool isPreloading;
   final bool isNextLoading;
   final bool isDownloading;
+  final ImageQuery query;
+  final List<TagSummary> featuredTags;
+  final List<TagSummary> popularTags;
+  final List<CategorySummary> categories;
+  final bool isDiscoveryLoading;
+  final List<HistoryImage> favoriteImages;
   final String? errorMessage;
   final String? lastLoadError;
 
@@ -97,6 +118,12 @@ class RandomImageViewState {
     bool? isPreloading,
     bool? isNextLoading,
     bool? isDownloading,
+    ImageQuery? query,
+    List<TagSummary>? featuredTags,
+    List<TagSummary>? popularTags,
+    List<CategorySummary>? categories,
+    bool? isDiscoveryLoading,
+    List<HistoryImage>? favoriteImages,
     Object? errorMessage = _unset,
     Object? lastLoadError = _unset,
   }) {
@@ -119,6 +146,12 @@ class RandomImageViewState {
       isPreloading: isPreloading ?? this.isPreloading,
       isNextLoading: isNextLoading ?? this.isNextLoading,
       isDownloading: isDownloading ?? this.isDownloading,
+      query: query ?? this.query,
+      featuredTags: featuredTags ?? this.featuredTags,
+      popularTags: popularTags ?? this.popularTags,
+      categories: categories ?? this.categories,
+      isDiscoveryLoading: isDiscoveryLoading ?? this.isDiscoveryLoading,
+      favoriteImages: favoriteImages ?? this.favoriteImages,
       errorMessage: identical(errorMessage, _unset)
           ? this.errorMessage
           : errorMessage as String?,
@@ -134,12 +167,14 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     required RandomImageRepository repository,
     required LocalTagStore tagStore,
     required HistoryStore historyStore,
+    required FavoriteStore favoriteStore,
     required DownloadService downloadService,
     required QuotaController quotaController,
     required QuotaState Function() readQuotaState,
   })  : _repository = repository,
         _tagStore = tagStore,
         _historyStore = historyStore,
+        _favoriteStore = favoriteStore,
         _downloadService = downloadService,
         _quotaController = quotaController,
         _readQuotaState = readQuotaState,
@@ -148,6 +183,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
   final RandomImageRepository _repository;
   final LocalTagStore _tagStore;
   final HistoryStore _historyStore;
+  final FavoriteStore _favoriteStore;
   final DownloadService _downloadService;
   final QuotaController _quotaController;
   final QuotaState Function() _readQuotaState;
@@ -172,11 +208,13 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     if (effectiveSelectedTag != selectedTag) {
       await _tagStore.saveSelectedTag(effectiveSelectedTag);
     }
+    final initialQuery = ImageQuery(tag: effectiveSelectedTag);
 
     var historyImages = await _historyStore.load();
+    final favoriteImages = await _favoriteStore.load();
     var restoredImage = await _restoreLastCurrent(historyImages);
     var preloadQueue = await _historyStore.loadPreloadQueue(
-      selectedTag: effectiveSelectedTag,
+      queryKey: initialQuery.cacheKey,
     );
     if (restoredImage == null && preloadQueue.isNotEmpty) {
       restoredImage = preloadQueue.first;
@@ -187,7 +225,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       }
       preloadQueue = await _historyStore.savePreloadQueue(
         preloadQueue,
-        selectedTag: effectiveSelectedTag,
+        queryKey: initialQuery.cacheKey,
       );
     } else if (restoredImage != null) {
       preloadQueue = preloadQueue
@@ -195,7 +233,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
           .toList();
       preloadQueue = await _historyStore.savePreloadQueue(
         preloadQueue,
-        selectedTag: effectiveSelectedTag,
+        queryKey: initialQuery.cacheKey,
       );
     }
     if (!mounted) {
@@ -212,10 +250,13 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       preloadQueue: preloadQueue,
       userTags: tags,
       selectedTag: effectiveSelectedTag,
+      query: initialQuery,
       historyImages: historyImages,
+      favoriteImages: favoriteImages,
       preloadTarget: _defaultPreloadTarget,
       isInitialLoading: restoredImage == null,
     );
+    unawaited(loadDiscovery());
 
     if (restoredImage == null) {
       await _loadFreshCurrent(isInitial: true);
@@ -246,7 +287,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       final next = queue.removeAt(0);
       final browsing = _nextBrowseMode(queue.isEmpty);
       final generation = _generation;
-      final selectedTag = state.selectedTag;
+      final queryKey = state.query.cacheKey;
       _pendingConsumedPreloadPaths.add(next.localFilePath);
       state = state.copyWith(
         currentImage: next,
@@ -259,7 +300,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       unawaited(_persistConsumedPreloadedImage(
         next,
         generation: generation,
-        selectedTag: selectedTag,
+        queryKey: queryKey,
       ));
       unawaited(_fillPreloadQueue(_generation));
       return;
@@ -288,11 +329,55 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       return;
     }
 
+    await _applyQuery(state.query.copyWith(tag: effectiveTag));
+  }
+
+  Future<void> switchOrientation(ImageOrientation? orientation) async {
+    if (orientation == state.query.orientation && state.currentImage != null) {
+      return;
+    }
+    await _applyQuery(state.query.copyWith(orientation: orientation));
+  }
+
+  Future<void> switchCategory(String? category) async {
+    final normalized = category?.trim();
+    final effectiveCategory =
+        normalized == null || normalized.isEmpty ? null : normalized;
+    if (effectiveCategory == state.query.category &&
+        state.currentImage != null) {
+      return;
+    }
+    await _applyQuery(state.query.copyWith(category: effectiveCategory));
+  }
+
+  Future<void> toggleExcludedTag(String tag) async {
+    final normalized = tag.trim();
+    if (normalized.isEmpty) {
+      return;
+    }
+    final excluded = [...state.query.excludeTags];
+    final index = excluded.indexWhere(
+      (item) => item.toLowerCase() == normalized.toLowerCase(),
+    );
+    if (index >= 0) {
+      excluded.removeAt(index);
+    } else {
+      excluded.add(normalized);
+    }
+    await _applyQuery(state.query.copyWith(excludeTags: excluded));
+  }
+
+  Future<void> clearFilters() async {
+    await _applyQuery(const ImageQuery());
+  }
+
+  Future<void> _applyQuery(ImageQuery query) async {
     _generation += 1;
     await _historyStore.clearPreloadQueue();
-    await _tagStore.saveSelectedTag(effectiveTag);
+    await _tagStore.saveSelectedTag(query.tag);
     state = state.copyWith(
-      selectedTag: effectiveTag,
+      selectedTag: query.tag,
+      query: query,
       preloadQueue: const [],
       preloadTarget: _defaultPreloadTarget,
       isFastBrowseMode: false,
@@ -302,6 +387,36 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     );
 
     await _loadFreshCurrent();
+  }
+
+  Future<void> loadDiscovery() async {
+    if (state.isDiscoveryLoading) {
+      return;
+    }
+    state = state.copyWith(isDiscoveryLoading: true);
+    try {
+      final results = await Future.wait<Object>([
+        _repository.featuredTags(),
+        _repository.tags(limit: 24),
+        _repository.categories(),
+      ]);
+      if (!mounted) {
+        return;
+      }
+      state = state.copyWith(
+        featuredTags: results[0] as List<TagSummary>,
+        popularTags: results[1] as List<TagSummary>,
+        categories: results[2] as List<CategorySummary>,
+      );
+    } catch (error) {
+      if (mounted) {
+        state = state.copyWith(errorMessage: _messageForError(error));
+      }
+    } finally {
+      if (mounted) {
+        state = state.copyWith(isDiscoveryLoading: false);
+      }
+    }
   }
 
   Future<bool> addTag(String value) async {
@@ -356,6 +471,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         imageToSave = await _repository.fetchImageById(
           imageId,
           sourceTag: imageToSave.sourceTag,
+          queryKey: imageToSave.queryKey,
         );
         if (mounted && state.currentImage?.imageId == imageId) {
           state = state.copyWith(currentImage: imageToSave);
@@ -402,6 +518,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       imageToSave = await _repository.fetchImageById(
         imageId,
         sourceTag: imageToSave.sourceTag,
+        queryKey: imageToSave.queryKey,
       );
       final images = await _historyStore.upsertFromRandomImage(imageToSave);
       if (mounted) {
@@ -410,6 +527,105 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     }
 
     return _downloadService.saveImage(imageToSave);
+  }
+
+  bool isFavorite(int? imageId) {
+    if (imageId == null) {
+      return false;
+    }
+    return state.favoriteImages.any((image) => image.imageId == imageId);
+  }
+
+  Future<void> toggleCurrentFavorite() async {
+    final current = state.currentImage;
+    if (current == null) {
+      return;
+    }
+
+    try {
+      late final List<HistoryImage> favorites;
+      if (isFavorite(current.imageId)) {
+        favorites = await _favoriteStore.removeByImageId(current.imageId);
+      } else if (await current.file.exists()) {
+        favorites = await _favoriteStore.addFromRandomImage(current);
+      } else {
+        final imageId = current.imageId;
+        if (imageId == null) {
+          throw const NiceViewException('当前图片已丢失，请切换下一张后再收藏');
+        }
+        if (!_readQuotaState().canAcquire) {
+          throw QuotaExceededException(_quotaRecoveryMessage());
+        }
+        final restored = await _repository.fetchImageById(
+          imageId,
+          sourceTag: current.sourceTag,
+          queryKey: current.queryKey,
+        );
+        favorites = await _favoriteStore.addFromRandomImage(restored);
+        if (mounted) {
+          state = state.copyWith(currentImage: restored);
+        }
+      }
+      if (mounted) {
+        state = state.copyWith(
+          favoriteImages: favorites,
+          errorMessage: isFavorite(current.imageId) ? '已取消收藏' : '已收藏',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        state = state.copyWith(errorMessage: _messageForError(error));
+      }
+    }
+  }
+
+  Future<void> toggleHistoryFavorite(HistoryImage image) async {
+    final latest = _latestHistoryImage(image) ?? image;
+    try {
+      late final List<HistoryImage> favorites;
+      if (isFavorite(latest.imageId)) {
+        favorites = await _favoriteStore.removeByImageId(latest.imageId);
+      } else if (await latest.file.exists()) {
+        favorites = await _favoriteStore.addFromHistoryImage(latest);
+      } else {
+        final imageId = latest.imageId;
+        if (imageId == null) {
+          throw const NiceViewException('这张图片已经不在本机了');
+        }
+        if (!_readQuotaState().canAcquire) {
+          throw QuotaExceededException(_quotaRecoveryMessage());
+        }
+        final restored = await _repository.fetchImageById(
+          imageId,
+          sourceTag: latest.sourceTag,
+          queryKey: latest.queryKey,
+        );
+        final historyImages = await _historyStore.upsertFromRandomImage(
+          restored,
+        );
+        favorites = await _favoriteStore.addFromRandomImage(restored);
+        if (mounted) {
+          state = state.copyWith(historyImages: historyImages);
+        }
+      }
+      if (mounted) {
+        state = state.copyWith(
+          favoriteImages: favorites,
+          errorMessage: isFavorite(latest.imageId) ? '已取消收藏' : '已收藏',
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        state = state.copyWith(errorMessage: _messageForError(error));
+      }
+    }
+  }
+
+  Future<void> deleteFavoriteImage(HistoryImage image) async {
+    final favorites = await _favoriteStore.remove(image);
+    if (mounted) {
+      state = state.copyWith(favoriteImages: favorites);
+    }
   }
 
   Future<void> deleteHistoryImage(HistoryImage image) async {
@@ -474,6 +690,13 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       galleryId: image.galleryId,
       contentType: image.contentType,
       sourceTag: image.sourceTag,
+      queryKey: image.queryKey,
+      width: image.width,
+      height: image.height,
+      orientation: image.orientation,
+      galleryTitle: image.galleryTitle,
+      galleryCategory: image.galleryCategory,
+      tags: image.tags,
       fetchedAt: image.fetchedAt,
     );
   }
@@ -491,7 +714,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     final generation = ++_generation;
     _log(
       'load current generation=$generation initial=$isInitial '
-      'tag=${state.selectedTag ?? '<all>'}',
+      'query=${state.query.summary}',
     );
     state = state.copyWith(
       isInitialLoading: isInitial && state.currentImage == null,
@@ -501,7 +724,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     );
 
     try {
-      final image = await _fetchRandomWithRetry(tag: state.selectedTag);
+      final image = await _fetchRandomWithRetry(query: state.query);
       if (!mounted || generation != _generation) {
         _log('discard stale image generation=$generation');
         return;
@@ -539,11 +762,11 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     }
   }
 
-  Future<RandomImage> _fetchRandomWithRetry({String? tag}) async {
+  Future<RandomImage> _fetchRandomWithRetry({required ImageQuery query}) async {
     Object? lastError;
     for (var attempt = 0; attempt < 3; attempt += 1) {
       try {
-        return await _repository.fetchRandom(tag: tag);
+        return await _repository.fetchRandom(query: query);
       } on ImageNotFoundException catch (error) {
         lastError = error;
       } on NiceViewException catch (error) {
@@ -566,13 +789,13 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
   Future<void> _persistConsumedPreloadedImage(
     RandomImage image, {
     required int generation,
-    required String? selectedTag,
+    required String queryKey,
   }) async {
     try {
       final historyImages = await _historyStore.upsertFromRandomImage(image);
       if (!mounted ||
           generation != _generation ||
-          selectedTag != state.selectedTag) {
+          queryKey != state.query.cacheKey) {
         return;
       }
 
@@ -590,19 +813,19 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
 
       final preloadQueue = await _historyStore.savePreloadQueue(
         state.preloadQueue,
-        selectedTag: selectedTag,
+        queryKey: queryKey,
         preservePaths: _pendingConsumedPreloadPaths,
       );
       if (!mounted ||
           generation != _generation ||
-          selectedTag != state.selectedTag) {
+          queryKey != state.query.cacheKey) {
         return;
       }
       state = state.copyWith(preloadQueue: preloadQueue);
     } catch (error) {
       if (mounted &&
           generation == _generation &&
-          selectedTag == state.selectedTag) {
+          queryKey == state.query.cacheKey) {
         state = state.copyWith(errorMessage: _messageForError(error));
       }
     } finally {
@@ -646,7 +869,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
           List.generate(requestCount, (_) async {
             try {
               return _PreloadResult(
-                image: await _fetchRandomWithRetry(tag: state.selectedTag),
+                image: await _fetchRandomWithRetry(query: state.query),
               );
             } catch (error) {
               return _PreloadResult(error: error);
@@ -685,7 +908,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         if (added > 0) {
           final preloadQueue = await _historyStore.savePreloadQueue(
             queue,
-            selectedTag: state.selectedTag,
+            queryKey: state.query.cacheKey,
             preservePaths: _pendingConsumedPreloadPaths,
           );
           if (!mounted || generation != _generation) {
