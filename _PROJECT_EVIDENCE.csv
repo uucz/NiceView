@@ -34,3 +34,6 @@ E032,API,curl,veil tag pagination sample,N/A,N/A,2026-05-14,https://veil.ortlind
 E033,API,curl,veil gallery image pagination,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/gallery/63764?image_limit=5&image_offset=20,图集规划,确认图集详情图片分页参数为 image_limit/image_offset 且返回 sort_order 21-25
 E034,本地代码,sed,QuotaState single bucket,v0.3.0,2026-05-14,2026-05-14,N/A,请求稳定,确认 QuotaState 当前为单桶 70/300s 模型，需要双桶改造
 E035,本地代码,sed,HistoryGrid and TagStrip long press delete,v0.3.0,2026-05-14,2026-05-14,N/A,可发现性,确认历史网格和标签条删除主要依赖长按，需要显式删除入口
+E036,API,curl,veil tags unsupported search params,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/tags?limit=5&search=Metart,标签浏览规划,确认 search/q/name 参数当前返回与基础热门列表一致，不能假设服务端搜索可用
+E037,API,curl,veil fixed image GET headers,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/image/30834,预览缓存规划,确认 GET 返回 cache-control max-age=3600 x-image-id content-type；HEAD 返回 405 仅允许 GET
+E038,ADR,本地文档,ADR-001 next batch architecture,N/A,2026-05-14,2026-05-14,N/A,架构决策,确认采用双桶额度 + 标签预览缓存 + 显式入口分批实施

@@ -3,6 +3,7 @@
 日期：2026-05-14
 范围：v0.3.0 之后的第一批开发。目标是让现有能力更容易被用户发现，并修正请求额度模型，使快速浏览、标签预览和未来图集浏览不会误触服务端限制。
 边界：本批不做反馈/举报，不做系统分享，不提上游 PR，不打发布 tag；开发完成后再统一跑 CI 和实机回归。
+架构决策：见 `_ADR_001_NEXT_BATCH_ARCHITECTURE.md`。
 
 ## 1. 当前证据与约束
 
@@ -22,8 +23,10 @@
   - 固定图片接口 `/v1/image/{id}`：`300s / 60 次 / 封 30 分钟`
 - 当前站点规模约为 `63765` 图集、`444284` 图片、`117189` 标签、`44` 分类，规模仍在增长。
 - `/v1/tags` 支持 `limit` 和 `offset`，返回 `items/total/limit/offset`。
+- `/v1/tags?search=Metart`、`?q=Metart`、`?name=Metart` 当前与基础热门列表返回一致，不能假设服务端搜索可用。
 - `/v1/galleries` 支持 `limit` 和 `offset`。
 - `/v1/gallery/{id}` 的图片分页参数实测为 `image_limit` 和 `image_offset`；普通 `limit/offset` 不改变图片分页。
+- `GET /v1/image/{id}` 不支持 HEAD，GET 响应含 `cache-control: public, max-age=3600`、`x-image-id` 和 `content-type`，适合做短期预览缓存。
 
 ## 2. 推荐实施顺序
 
@@ -67,7 +70,7 @@
 - `QuotaState` 从单一事件列表改成两个桶的事件列表与两个冷却时间。
 - 旧键 `nice_view.quota_events` 保留迁移：第一次加载时把旧事件迁到 `random` 桶，避免升级后立即丢失保护。
 - `tryConsumeRemoteRequest()` 改为 `tryConsume(QuotaBucket bucket)`。
-- `startServerLockout()` 改为 `startServerLockout(QuotaBucket bucket)`。
+- `startServerLockout()` 改为 `startServerLockout(QuotaBucket bucket)`，服务端公告为封 30 分钟，不再使用 60 秒作为真实冷却假设。
 - `QuotaBar` 可先展示两个简短行：随机/元数据、固定图片；复杂详情留到设置页。
 
 接口归类：
@@ -131,7 +134,7 @@
 完整标签浏览页开发前，需要先回答这些问题：
 
 1. `/v1/tags` 是否支持服务端搜索参数。
-   - 当前证据只确认 `limit/offset`。
+   - 当前证据确认 `search/q/name` 参数会被忽略，先按“不支持服务端搜索”设计。
    - 若无服务端搜索，移动端应分页加载热门序列并本地过滤已加载数据，同时保留手动输入标签。
 
 2. 标签页默认展示多少条。
