@@ -5,3 +5,4 @@ E003,GitHub API,GitHub Repository,itsmorninghao/NiceView,N/A,2026-05-13,2026-05-
 E004,GitHub Actions,GitHub CLI,iOS AltStore Release run 25845556990,v0.2.1,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/actions/runs/25845556990,发布验证,确认 analyze/test/iOS IPA/source.json/Release 上传/Pages 部署全部成功
 E005,GitHub Pages,curl,Nice View source.json,v0.2.1,2026-05-14,2026-05-14,https://uucz.github.io/NiceView/source.json,AltStore 源验证,确认源文件可访问且指向 v0.2.1 IPA
 E006,GitHub Release,GitHub CLI,NiceView v0.2.1 assets,v0.2.1,2026-05-14,2026-05-14,https://github.com/uucz/NiceView/releases/tag/v0.2.1,发布资产验证,确认 niceview-unsigned.ipa 与 source.json 已上传
+E007,实机验证,用户确认,Nice View AltStore 安装验证,v0.2.1,2026-05-14,2026-05-14,https://uucz.github.io/NiceView/source.json,iOS 安装验证,用户确认在本机 AltStore 添加源并安装正常

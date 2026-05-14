@@ -33,4 +33,4 @@
 - AltStore 源：`https://uucz.github.io/NiceView/source.json`
 - IPA：`https://github.com/uucz/NiceView/releases/download/v0.2.1/niceview-unsigned.ipa`
 - 验证结果：`source.json` 已通过 `curl -L` 访问，Release 资产中 `niceview-unsigned.ipa` 大小为 `7052796` 字节，与源内 `size` 一致。
-- 剩余验证：需要在 iOS 设备的 AltStore 中实际添加源并安装，确认权限校验与签名流程通过。
+- 实机验证：用户已确认在 iOS 设备的 AltStore 中添加源并安装正常，权限校验与签名流程通过。
