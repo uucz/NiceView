@@ -43,6 +43,8 @@ class DownloadService {
         return await _saveWithPlatformChannel(bytes, fileName, mimeType);
       } on PlatformException catch (error) {
         throw NiceViewException(error.message ?? '保存到系统相册失败');
+      } on MissingPluginException {
+        throw const NiceViewException('保存到系统相册功能未注册，请重新安装最新版后再试');
       }
     }
 

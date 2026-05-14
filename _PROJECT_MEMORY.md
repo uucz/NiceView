@@ -83,3 +83,14 @@
   - IPA 下载地址经重定向后返回 HTTP `200`，`content-type` 为 `application/octet-stream`。
 - 待验证：用户在 iOS 设备上通过 AltStore 更新到 `v0.2.2` 后，实际点击保存并确认图片进入系统 Photos。
 - 维护提醒：GitHub Actions 提示 Node.js 20 action runtime 将在 2026-09-16 移除，后续需要跟踪 `actions/*` 和 `softprops/action-gh-release` 对 Node.js 24 的支持。
+
+## 2026-05-14：v0.2.2 iOS 保存实机失败与修复方向
+
+- 用户实机反馈：
+  - “浏览记录”保存提示：`保存失败，图片可能已经不在本机了`。
+  - 主页保存提示：`网络连接失败，稍后再试`。
+- 判断：
+  - AltStore 更新后 iOS 沙盒路径可能变化，历史记录持久化的是绝对路径，需要在读取历史时按当前 `Application Support/history` 路径自愈。
+  - 主页保存的网络错误不一定来自网络，`MissingPluginException` 等保存链路异常会落入通用兜底，需要改成明确保存错误。
+  - iOS 原生保存不应依赖 `UIImage(data:)` 解码，改为将原始图片字节写入临时文件，再通过 `PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL:)` 写入 Photos。
+- 执行策略：先本地修复和记录，不打新 tag、不触发发布 CI；等筛选发现和收藏等计划功能完成后统一跑 CI 与发布。

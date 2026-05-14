@@ -381,6 +381,37 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     }
   }
 
+  Future<String> saveHistoryImage(HistoryImage image) async {
+    final latest = _latestHistoryImage(image) ?? image;
+    var imageToSave = _randomImageFromHistory(latest);
+
+    final localFile = File(imageToSave.localFilePath);
+    if (!await localFile.exists()) {
+      final imageId = imageToSave.imageId;
+      if (imageId == null) {
+        final images = await _historyStore.removeMissing(latest);
+        if (mounted) {
+          state = state.copyWith(historyImages: images);
+        }
+        throw const NiceViewException('这张历史图已经不在本机了');
+      }
+      if (!_readQuotaState().canAcquire) {
+        throw QuotaExceededException(_quotaRecoveryMessage());
+      }
+
+      imageToSave = await _repository.fetchImageById(
+        imageId,
+        sourceTag: imageToSave.sourceTag,
+      );
+      final images = await _historyStore.upsertFromRandomImage(imageToSave);
+      if (mounted) {
+        state = state.copyWith(historyImages: images);
+      }
+    }
+
+    return _downloadService.saveImage(imageToSave);
+  }
+
   Future<void> deleteHistoryImage(HistoryImage image) async {
     final images = await _historyStore.delete(image);
     if (mounted) {
@@ -445,6 +476,15 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       sourceTag: image.sourceTag,
       fetchedAt: image.fetchedAt,
     );
+  }
+
+  HistoryImage? _latestHistoryImage(HistoryImage image) {
+    for (final item in state.historyImages) {
+      if (item.historyId == image.historyId) {
+        return item;
+      }
+    }
+    return null;
   }
 
   Future<void> _loadFreshCurrent({bool isInitial = false}) async {

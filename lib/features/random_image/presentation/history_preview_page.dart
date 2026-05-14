@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
+import '../../../services/app_exceptions.dart';
 import '../../../services/download_service.dart';
 import '../domain/history_image.dart';
-import '../domain/random_image.dart';
+import 'random_image_controller.dart';
 import 'widgets/history_preview_viewer.dart';
 
 class HistoryPreviewPage extends ConsumerStatefulWidget {
@@ -130,16 +131,9 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
     setState(() => _isSaving = true);
     try {
       final image = widget.images[_index];
-      final destination = await ref.read(downloadServiceProvider).saveImage(
-            RandomImage(
-              localFilePath: image.localFilePath,
-              imageId: image.imageId,
-              galleryId: image.galleryId,
-              contentType: image.contentType,
-              sourceTag: image.sourceTag,
-              fetchedAt: image.fetchedAt,
-            ),
-          );
+      final destination = await ref
+          .read(randomImageControllerProvider.notifier)
+          .saveHistoryImage(image);
       if (!mounted) {
         return;
       }
@@ -152,17 +146,24 @@ class _HistoryPreviewPageState extends ConsumerState<HistoryPreviewPage> {
           ),
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('保存失败，图片可能已经不在本机了')),
+        SnackBar(content: Text(_messageForSaveError(error))),
       );
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  String _messageForSaveError(Object error) {
+    if (error is NiceViewException) {
+      return error.message;
+    }
+    return '保存失败，稍后再试';
   }
 }

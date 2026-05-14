@@ -50,7 +50,7 @@ class HistoryPage extends ConsumerWidget {
     HistoryImage image,
   ) async {
     final controller = ref.read(randomImageControllerProvider.notifier);
-    if (!await image.file.exists()) {
+    if (!await image.file.exists() && image.imageId == null) {
       await controller.removeMissingHistoryImage(image);
       return;
     }

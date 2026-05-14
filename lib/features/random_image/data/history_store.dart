@@ -27,8 +27,10 @@ class HistoryStore {
   final SharedPreferences _preferences;
 
   Future<List<HistoryImage>> load() async {
-    final items = HistoryImage.listFromJsonString(
-      _preferences.getString(_historyKey),
+    final items = await _healHistoryPaths(
+      HistoryImage.listFromJsonString(
+        _preferences.getString(_historyKey),
+      ),
     );
     items.sort((a, b) => b.viewedAt.compareTo(a.viewedAt));
     return items.take(_maxHistory).toList();
@@ -40,9 +42,18 @@ class HistoryStore {
       return null;
     }
     try {
-      return HistoryImage.fromJson(
+      final image = HistoryImage.fromJson(
         Map<String, Object?>.from(jsonDecode(value) as Map),
       );
+      final resolvedPath = await _resolveCurrentHistoryPath(image);
+      if (resolvedPath == null) {
+        return image;
+      }
+      final resolvedImage = image.copyWith(localFilePath: resolvedPath);
+      if (resolvedPath != image.localFilePath) {
+        await _saveLastCurrent(resolvedImage);
+      }
+      return resolvedImage;
     } catch (_) {
       await _preferences.remove(_lastCurrentKey);
       return null;
@@ -217,6 +228,69 @@ class HistoryStore {
     );
     await source.copy(target.path);
     return target.path;
+  }
+
+  Future<List<HistoryImage>> _healHistoryPaths(
+    List<HistoryImage> images,
+  ) async {
+    var changed = false;
+    final resolvedImages = <HistoryImage>[];
+
+    for (final image in images) {
+      final resolvedPath = await _resolveCurrentHistoryPath(image);
+      if (resolvedPath == null) {
+        resolvedImages.add(image);
+        continue;
+      }
+
+      if (resolvedPath == image.localFilePath) {
+        resolvedImages.add(image);
+        continue;
+      }
+
+      changed = true;
+      resolvedImages.add(image.copyWith(localFilePath: resolvedPath));
+    }
+
+    if (changed) {
+      await _save(resolvedImages);
+      final lastCurrent = await loadLastCurrent();
+      if (lastCurrent != null) {
+        final matched = resolvedImages.where(
+          (image) => image.historyId == lastCurrent.historyId,
+        );
+        if (matched.isNotEmpty &&
+            matched.first.localFilePath != lastCurrent.localFilePath) {
+          await _saveLastCurrent(matched.first);
+        }
+      }
+    }
+
+    return resolvedImages;
+  }
+
+  Future<String?> _resolveCurrentHistoryPath(HistoryImage image) async {
+    if (await File(image.localFilePath).exists()) {
+      return image.localFilePath;
+    }
+
+    final supportDirectory = await getApplicationSupportDirectory();
+    final historyDirectory = Directory(p.join(supportDirectory.path, 'history'));
+    final candidates = <String>{
+      p.join(historyDirectory.path, p.basename(image.localFilePath)),
+      p.join(
+        historyDirectory.path,
+        'nice_view_${image.historyId}${extensionForContentType(image.contentType)}',
+      ),
+    };
+
+    for (final candidate in candidates) {
+      if (await File(candidate).exists()) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 
   Future<String> _copyIntoPreloadCache(RandomImage image) async {

@@ -159,18 +159,19 @@
 
 ### 用户目标
 
-每一批功能完成后能稳定发布，不回退 AltStore、Android 或基础浏览体验。
+功能开发期间不反复等待发布 CI；等 iOS 保存、筛选发现和收藏都完成后，再统一发布回归，不回退 AltStore、Android 或基础浏览体验。
 
 ### 改造点
 
-1. 每个阶段合并前跑 Flutter analyze/test。
-2. 每个用户可见阶段打 tag，走 Android 与 iOS/AltStore workflow。
-3. 实机检查：
+1. 开发期间优先跑本地可用测试和静态脚本检查。
+2. 不为单个中间修复打 tag，不主动触发 Android 与 iOS/AltStore workflow。
+3. 所有计划功能完成后统一打 tag，走 Android 与 iOS/AltStore workflow。
+4. 实机检查：
    - iOS AltStore 更新。
    - iOS 保存相册。
    - Android 随机浏览和保存。
    - 标签筛选与历史。
-4. 更新 `_PROJECT_*` 记录。
+5. 更新 `_PROJECT_*` 记录。
 
 ### 验收标准
 
