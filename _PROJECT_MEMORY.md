@@ -227,3 +227,22 @@
   2. 请求额度拆桶与标签预览缓存。
   3. 显式入口、删除入口和可访问性补强。
   4. 标签浏览、图集浏览和设置页作为可选产品功能单独讨论。
+
+## 2026-05-15：v0.4.0 发布验证
+
+- 标签：`v0.4.0`
+- 代码提交：`e4a5c57 fix: satisfy gallery detail analyzer`
+- 首次 tag 触发的 CI 因 `flutter analyze` 中 `unnecessary_brace_in_string_interps` 失败；已修复并将 `v0.4.0` 指向修复提交重新触发。
+- Actions：
+  - `iOS AltStore Release` 成功，run id：`25893835255`
+  - `Android Release APK` 成功，run id：`25893835254`
+- Release：`https://github.com/uucz/NiceView/releases/tag/v0.4.0`
+- AltStore 源：`https://uucz.github.io/NiceView/source.json`
+- IPA：`https://github.com/uucz/NiceView/releases/download/v0.4.0/niceview-unsigned.ipa`
+- 验证结果：
+  - iOS workflow 中 `Analyze and test`、IPA 构建、source.json 生成、Release 上传、Pages 部署全部成功。
+  - Android workflow 中 `Analyze`、`Test`、release APK 构建和 artifact 上传全部成功。
+  - `source.json` 已发布为 `0.4.0+1`，下载地址指向 `v0.4.0/niceview-unsigned.ipa`。
+  - Release 资产包含 `niceview-unsigned.ipa` 和 `source.json`；IPA 大小为 `7253767` 字节，和源内 `size` 一致。
+  - IPA 下载地址经重定向后返回 HTTP `200`，`content-type` 为 `application/octet-stream`。
+- 待验证：用户在 iOS 设备通过 AltStore 更新 `v0.4.0` 后，实测侧栏入口、首次引导、标签浏览、图集浏览、设置页、默认偏好、保存 Photos 和收藏持久化。
