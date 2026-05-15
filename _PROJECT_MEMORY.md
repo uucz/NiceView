@@ -190,3 +190,40 @@
   - 旧单桶 SharedPreferences 键迁入 random 桶，新键不覆盖旧键，便于回滚。
   - 标签预览缓存第一版使用内存 TTL 10 分钟、最多 20 个标签。
   - 标签浏览第一版不声称全量搜索，只筛选已加载标签并保留手动输入标签能力。
+
+## 2026-05-14：v0.4.0 可发现性与请求稳定功能开发
+
+- 实施范围：
+  - 主界面增加显式筛选/信息按钮和一次性轻引导。
+  - 请求额度拆成 `random=80/300s` 与 `image=50/300s` 两个桶，服务端冷却按桶记录 30 分钟；旧单桶记录迁移到 random 桶。
+  - 标签预览增加 10 分钟内存缓存、局部重试和固定图片额度控制。
+  - 新增完整标签浏览页：分页加载、本地筛选、按热度/名称排序、预览、使用、排除、加入我的标签。
+  - 新增默认偏好：保存/清除默认方向、默认分类和常驻排除标签。
+  - 当前图片标签 chip 改为动作入口，支持使用、预览、排除、加入我的标签。
+  - 新增图集列表与图集详情页，使用 `image_limit/image_offset` 分页，同图集图片通过固定图片额度加载；不展示外部来源页、下载链接和附件。
+  - 新增设置页：历史上限、历史/收藏/预加载/临时缓存占用、清理临时缓存、清空历史、清空收藏、清除默认偏好。
+  - 离线/失败状态增加历史和收藏入口；核心按钮补 Semantics；关键操作加入 iOS haptic。
+  - iOS 构建脚本注入 LaunchScreen storyboard，并用标准库生成 AppIcon PNG 资产。
+- 版本：`pubspec.yaml` 已更新到 `0.4.0+1`，AltStore 描述和 README 已同步。
+- 本地验证：
+  - `git diff --check` 通过。
+  - `python3 -m unittest discover -s scripts/tests` 通过。
+  - `bash -n scripts/build_unsigned_ios_ipa.sh` 通过。
+  - 本机缺少 `flutter` 与 `dart`，Flutter analyze/test/build 需在 CI 或安装工具链后执行。
+- 回滚方式：
+  - 若额度拆桶异常，可回滚 `quota_state.dart`、`quota_service.dart` 和 repository 中的桶调用，旧键仍保留。
+  - 若新页面有布局或性能问题，可单独隐藏侧栏入口并保留底层 API/model。
+  - 若 iOS 图标生成影响构建，可删除 build script 中 AppIcon 生成块和 LaunchScreen 拷贝行，恢复 Flutter 默认模板。
+
+## 2026-05-14：上游 PR 评估
+
+- 当前结论：暂不向上游发 PR。
+- 原因：
+  - 本 fork 已包含 AltStore 发布链、iOS Photos 原生保存、请求额度模型、标签/图集/设置等多条产品线，直接提交一个大 PR 不利于原作者审查。
+  - AltStore source、GitHub Pages、fork 仓库名和发布策略明显偏 fork 运维，不适合作为上游通用改动。
+  - v0.4.0 还需要 Flutter analyze/test/build、iOS 实机和 Android 回归确认。
+- 后续若贡献，建议拆分：
+  1. iOS Photos 保存修复与权限声明。
+  2. 请求额度拆桶与标签预览缓存。
+  3. 显式入口、删除入口和可访问性补强。
+  4. 标签浏览、图集浏览和设置页作为可选产品功能单独讨论。

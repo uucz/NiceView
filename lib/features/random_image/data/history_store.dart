@@ -21,19 +21,44 @@ class HistoryStore {
   static const _historyKey = 'nice_view.history_images';
   static const _lastCurrentKey = 'nice_view.last_current_image';
   static const _preloadQueueKey = 'nice_view.preload_queue';
-  static const _maxHistory = 30;
+  static const _historyLimitKey = 'nice_view.history_limit';
+  static const _defaultHistoryLimit = 30;
+  static const _minHistoryLimit = 10;
+  static const _maxHistoryLimit = 200;
   static const _maxPreload = 12;
 
   final SharedPreferences _preferences;
 
   Future<List<HistoryImage>> load() async {
+    final items = await _loadAllHistory();
+    return items.take(loadHistoryLimit()).toList();
+  }
+
+  Future<List<HistoryImage>> _loadAllHistory() async {
     final items = await _healHistoryPaths(
       HistoryImage.listFromJsonString(
         _preferences.getString(_historyKey),
       ),
     );
     items.sort((a, b) => b.viewedAt.compareTo(a.viewedAt));
-    return items.take(_maxHistory).toList();
+    return items;
+  }
+
+  int loadHistoryLimit() {
+    final value = _preferences.getInt(_historyLimitKey) ?? _defaultHistoryLimit;
+    return value.clamp(_minHistoryLimit, _maxHistoryLimit).toInt();
+  }
+
+  Future<List<HistoryImage>> saveHistoryLimit(int value) async {
+    final limit = value.clamp(_minHistoryLimit, _maxHistoryLimit).toInt();
+    await _preferences.setInt(_historyLimitKey, limit);
+    final images = await _loadAllHistory();
+    while (images.length > limit) {
+      final removed = images.removeLast();
+      await _deleteFile(removed.localFilePath);
+    }
+    await _save(images);
+    return images;
   }
 
   Future<HistoryImage?> loadLastCurrent() async {
@@ -124,7 +149,8 @@ class HistoryStore {
       images.insert(0, currentHistoryImage);
     }
 
-    while (images.length > _maxHistory) {
+    final historyLimit = loadHistoryLimit();
+    while (images.length > historyLimit) {
       final removed = images.removeLast();
       await _deleteFile(removed.localFilePath);
     }
@@ -225,6 +251,39 @@ class HistoryStore {
       await _deleteFile(image.localFilePath);
     }
     await _preferences.remove(_preloadQueueKey);
+  }
+
+  Future<List<HistoryImage>> clearHistory() async {
+    final images = await _loadAllHistory();
+    for (final image in images) {
+      await _deleteFile(image.localFilePath);
+    }
+    final supportDirectory = await getApplicationSupportDirectory();
+    await _deleteDirectory(Directory(p.join(supportDirectory.path, 'history')));
+    await _preferences.remove(_historyKey);
+    await _preferences.remove(_lastCurrentKey);
+    return <HistoryImage>[];
+  }
+
+  Future<int> historyCacheSizeBytes() async {
+    final supportDirectory = await getApplicationSupportDirectory();
+    return _directorySize(Directory(p.join(supportDirectory.path, 'history')));
+  }
+
+  Future<int> preloadCacheSizeBytes() async {
+    final supportDirectory = await getApplicationSupportDirectory();
+    return _directorySize(Directory(p.join(supportDirectory.path, 'preload')));
+  }
+
+  Future<int> temporaryImageCacheSizeBytes() async {
+    final tempDirectory = await getTemporaryDirectory();
+    return _directorySize(Directory(p.join(tempDirectory.path, 'nice_view_images')));
+  }
+
+  Future<void> clearTemporaryImageCache() async {
+    await clearPreloadQueue();
+    final tempDirectory = await getTemporaryDirectory();
+    await _deleteDirectory(Directory(p.join(tempDirectory.path, 'nice_view_images')));
   }
 
   Future<String> _copyIntoHistoryCache(
@@ -374,6 +433,25 @@ class HistoryStore {
     final file = File(path);
     if (await file.exists()) {
       await file.delete();
+    }
+  }
+
+  Future<int> _directorySize(Directory directory) async {
+    if (!await directory.exists()) {
+      return 0;
+    }
+    var size = 0;
+    await for (final entity in directory.list(recursive: true)) {
+      if (entity is File) {
+        size += await entity.length();
+      }
+    }
+    return size;
+  }
+
+  Future<void> _deleteDirectory(Directory directory) async {
+    if (await directory.exists()) {
+      await directory.delete(recursive: true);
     }
   }
 }

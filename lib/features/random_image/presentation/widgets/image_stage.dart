@@ -11,6 +11,8 @@ class ImageStage extends StatefulWidget {
     required this.isLoading,
     required this.errorMessage,
     required this.onRetry,
+    required this.onOpenHistory,
+    required this.onOpenFavorites,
     required this.onSwipeLeft,
     required this.onHorizontalDragUpdate,
     required this.onHorizontalDragEnd,
@@ -22,6 +24,8 @@ class ImageStage extends StatefulWidget {
   final bool isLoading;
   final String? errorMessage;
   final VoidCallback onRetry;
+  final VoidCallback? onOpenHistory;
+  final VoidCallback? onOpenFavorites;
   final VoidCallback onSwipeLeft;
   final ValueChanged<DragUpdateDetails> onHorizontalDragUpdate;
   final ValueChanged<DragEndDetails> onHorizontalDragEnd;
@@ -85,6 +89,8 @@ class _ImageStageState extends State<ImageStage>
               isLoading: widget.isLoading,
               errorMessage: widget.errorMessage,
               onRetry: widget.onRetry,
+              onOpenHistory: widget.onOpenHistory,
+              onOpenFavorites: widget.onOpenFavorites,
             )
           else
             InteractiveViewer(
@@ -101,9 +107,14 @@ class _ImageStageState extends State<ImageStage>
                   child: Image.file(
                     File(image.localFilePath),
                     fit: BoxFit.contain,
+                    semanticLabel: '当前图片 ${image.displayId}',
                     gaplessPlayback: true,
                     errorBuilder: (_, __, ___) {
-                      return _ImageError(onRetry: widget.onRetry);
+                      return _ImageError(
+                        onRetry: widget.onRetry,
+                        onOpenHistory: widget.onOpenHistory,
+                        onOpenFavorites: widget.onOpenFavorites,
+                      );
                     },
                   ),
                 ),
@@ -216,11 +227,15 @@ class _EmptyStage extends StatelessWidget {
     required this.isLoading,
     required this.errorMessage,
     required this.onRetry,
+    required this.onOpenHistory,
+    required this.onOpenFavorites,
   });
 
   final bool isLoading;
   final String? errorMessage;
   final VoidCallback onRetry;
+  final VoidCallback? onOpenHistory;
+  final VoidCallback? onOpenFavorites;
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +250,8 @@ class _EmptyStage extends StatelessWidget {
     return _ImageError(
       message: errorMessage,
       onRetry: onRetry,
+      onOpenHistory: onOpenHistory,
+      onOpenFavorites: onOpenFavorites,
     );
   }
 }
@@ -242,10 +259,14 @@ class _EmptyStage extends StatelessWidget {
 class _ImageError extends StatelessWidget {
   const _ImageError({
     required this.onRetry,
+    required this.onOpenHistory,
+    required this.onOpenFavorites,
     this.message,
   });
 
   final VoidCallback onRetry;
+  final VoidCallback? onOpenHistory;
+  final VoidCallback? onOpenFavorites;
   final String? message;
 
   @override
@@ -265,12 +286,31 @@ class _ImageError extends StatelessWidget {
               const SizedBox(height: 14),
             ],
             IconButton.filled(
+              tooltip: '重试',
               onPressed: onRetry,
               icon: const Icon(Icons.refresh_rounded),
               style: IconButton.styleFrom(
                 backgroundColor: Colors.white.withValues(alpha: 0.10),
                 foregroundColor: niceText,
               ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: onOpenHistory,
+                  icon: const Icon(Icons.history_rounded),
+                  label: const Text('历史'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onOpenFavorites,
+                  icon: const Icon(Icons.favorite_rounded),
+                  label: const Text('收藏'),
+                ),
+              ],
             ),
           ],
         ),

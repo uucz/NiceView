@@ -37,3 +37,6 @@ E035,本地代码,sed,HistoryGrid and TagStrip long press delete,v0.3.0,2026-05-
 E036,API,curl,veil tags unsupported search params,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/tags?limit=5&search=Metart,标签浏览规划,确认 search/q/name 参数当前返回与基础热门列表一致，不能假设服务端搜索可用
 E037,API,curl,veil fixed image GET headers,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/image/30834,预览缓存规划,确认 GET 返回 cache-control max-age=3600 x-image-id content-type；HEAD 返回 405 仅允许 GET
 E038,ADR,本地文档,ADR-001 next batch architecture,N/A,2026-05-14,2026-05-14,N/A,架构决策,确认采用双桶额度 + 标签预览缓存 + 显式入口分批实施
+E039,API,curl,veil galleries current response,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/galleries?limit=2&offset=0,图集实现,确认图集列表返回 items/total/limit/offset/has_next 以及 cover 字段
+E040,API,curl,veil gallery detail current response,N/A,N/A,2026-05-14,https://veil.ortlinde.com/v1/gallery/921?image_limit=3&image_offset=0,图集实现,确认图集详情返回 images/images_pagination/tags/category 且包含不展示的外部来源字段
+E041,本地验证,unittest/bash/git,NiceView v0.4.0 local checks,v0.4.0,2026-05-14,2026-05-14,N/A,本地验证,git diff --check、python3 -m unittest discover -s scripts/tests、bash -n scripts/build_unsigned_ios_ipa.sh 通过；本机 flutter/dart 不存在

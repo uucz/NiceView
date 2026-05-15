@@ -22,21 +22,25 @@ class FloatingNextButton extends StatelessWidget {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 160),
       opacity: effectiveOpacity,
-      child: SizedBox.square(
-        dimension: 56,
-        child: Material(
-          color: Colors.black.withValues(alpha: 0.62),
-          shape: const CircleBorder(),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: enabled ? onPressed : onDisabledPressed,
-            child: Center(
-              child: isLoading
-                  ? const SizedBox.square(
-                      dimension: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_forward_rounded, size: 28),
+      child: Semantics(
+        button: true,
+        label: '下一张',
+        child: SizedBox.square(
+          dimension: 56,
+          child: Material(
+            color: Colors.black.withValues(alpha: 0.62),
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: enabled ? onPressed : onDisabledPressed,
+              child: Center(
+                child: isLoading
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.arrow_forward_rounded, size: 28),
+              ),
             ),
           ),
         ),

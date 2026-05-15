@@ -13,11 +13,15 @@ class ServerLockoutOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (!quota.isServerLocked) {
+    if (!quota.anyServerLocked) {
       return const SizedBox.shrink();
     }
 
-    final seconds = quota.serverLockoutRemaining.inSeconds.clamp(0, 60).toInt();
+    final remaining = quota.longestServerLockoutRemaining;
+    final bucket = quota.longestServerLockedBucket;
+    final label = remaining.inMinutes > 0
+        ? '${remaining.inMinutes + 1}m'
+        : '${remaining.inSeconds.clamp(0, 60).toInt()}s';
     return Positioned.fill(
       child: Stack(
         fit: StackFit.expand,
@@ -28,7 +32,7 @@ class ServerLockoutOverlay extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${seconds}s',
+                  label,
                   style: const TextStyle(
                     color: niceText,
                     fontSize: 48,
@@ -37,9 +41,16 @@ class ServerLockoutOverlay extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  '歇 60 秒，让服务器也喝口水。',
+                  '服务器正在冷却，稍后再试。',
                   style: TextStyle(color: niceMuted, fontSize: 13),
                 ),
+                if (bucket != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    bucket.label,
+                    style: const TextStyle(color: niceMuted, fontSize: 12),
+                  ),
+                ],
               ],
             ),
           ),

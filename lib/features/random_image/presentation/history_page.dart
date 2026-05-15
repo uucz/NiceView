@@ -10,7 +10,12 @@ import 'random_image_controller.dart';
 import 'widgets/history_grid.dart';
 
 class HistoryPage extends ConsumerStatefulWidget {
-  const HistoryPage({super.key});
+  const HistoryPage({
+    this.showFavorites = false,
+    super.key,
+  });
+
+  final bool showFavorites;
 
   @override
   ConsumerState<HistoryPage> createState() => _HistoryPageState();
@@ -18,6 +23,12 @@ class HistoryPage extends ConsumerStatefulWidget {
 
 class _HistoryPageState extends ConsumerState<HistoryPage> {
   bool _showFavorites = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _showFavorites = widget.showFavorites;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +80,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           Expanded(
             child: HistoryGrid(
               images: images,
+              emptyLabel: _showFavorites ? '暂无收藏' : '暂无历史',
               favoriteImageIds:
                   state.favoriteImages.map((image) => image.imageId).toSet(),
               onOpen: (image) => _openPreview(context, ref, image, images),

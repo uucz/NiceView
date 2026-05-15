@@ -21,35 +21,84 @@ class QuotaService {
 
   static const _eventsKey = 'nice_view.quota_events';
   static const _serverLockoutKey = 'nice_view.server_lockout_until';
+  static const _randomEventsKey = 'nice_view.quota.random_events';
+  static const _imageEventsKey = 'nice_view.quota.image_events';
+  static const _randomServerLockoutKey =
+      'nice_view.quota.random_lockout_until';
+  static const _imageServerLockoutKey = 'nice_view.quota.image_lockout_until';
+  static const _v2MigratedKey = 'nice_view.quota.v2_migrated';
 
   final SharedPreferences _preferences;
 
   QuotaState load() {
-    final events = (_preferences.getStringList(_eventsKey) ?? const [])
-        .map(DateTime.tryParse)
-        .whereType<DateTime>()
-        .toList();
-    final lockoutValue = _preferences.getString(_serverLockoutKey);
-    return QuotaState.initial()
+    final initial = QuotaState.initial();
+    final migrated = _preferences.getBool(_v2MigratedKey) == true;
+    final legacyEvents = _loadEvents(_eventsKey);
+    final randomEvents = _loadEvents(_randomEventsKey);
+    final imageEvents = _loadEvents(_imageEventsKey);
+    final legacyLockout = _loadDate(_serverLockoutKey);
+    final randomLockout = _loadDate(_randomServerLockoutKey);
+    final imageLockout = _loadDate(_imageServerLockoutKey);
+
+    final state = initial
         .copyWith(
-          quotaEvents: events,
-          serverLockoutUntil:
-              lockoutValue == null ? null : DateTime.tryParse(lockoutValue),
+          random: initial.random.copyWith(
+            quotaEvents: randomEvents.isNotEmpty
+                ? randomEvents
+                : migrated
+                    ? randomEvents
+                    : legacyEvents,
+            serverLockoutUntil: randomLockout ?? legacyLockout,
+          ),
+          image: initial.image.copyWith(
+            quotaEvents: imageEvents,
+            serverLockoutUntil: imageLockout,
+          ),
         )
         .pruned();
+    if (!migrated) {
+      unawaited(save(state));
+    }
+    return state;
   }
 
   Future<void> save(QuotaState state) async {
     final pruned = state.pruned();
     await _preferences.setStringList(
-      _eventsKey,
-      pruned.quotaEvents.map((event) => event.toIso8601String()).toList(),
+      _randomEventsKey,
+      pruned.random.quotaEvents
+          .map((event) => event.toIso8601String())
+          .toList(),
     );
-    final until = pruned.serverLockoutUntil;
+    await _preferences.setStringList(
+      _imageEventsKey,
+      pruned.image.quotaEvents
+          .map((event) => event.toIso8601String())
+          .toList(),
+    );
+    await _saveLockout(_randomServerLockoutKey, pruned.random);
+    await _saveLockout(_imageServerLockoutKey, pruned.image);
+    await _preferences.setBool(_v2MigratedKey, true);
+  }
+
+  List<DateTime> _loadEvents(String key) {
+    return (_preferences.getStringList(key) ?? const [])
+        .map(DateTime.tryParse)
+        .whereType<DateTime>()
+        .toList();
+  }
+
+  DateTime? _loadDate(String key) {
+    final value = _preferences.getString(key);
+    return value == null ? null : DateTime.tryParse(value);
+  }
+
+  Future<void> _saveLockout(String key, QuotaWindowState bucket) async {
+    final until = bucket.serverLockoutUntil;
     if (until == null) {
-      await _preferences.remove(_serverLockoutKey);
+      await _preferences.remove(key);
     } else {
-      await _preferences.setString(_serverLockoutKey, until.toIso8601String());
+      await _preferences.setString(key, until.toIso8601String());
     }
   }
 }
@@ -62,24 +111,39 @@ class QuotaController extends StateNotifier<QuotaState> {
   final QuotaService _service;
   Timer? _ticker;
 
-  Future<bool> tryConsumeRemoteRequest() async {
+  Future<bool> tryConsume(QuotaBucket bucket) async {
     final pruned = state.pruned();
-    if (!pruned.canAcquire) {
+    if (!pruned.canAcquireFor(bucket)) {
       state = pruned;
       await _service.save(state);
       return false;
     }
 
-    state = pruned.copyWith(
-      quotaEvents: [...pruned.quotaEvents, DateTime.now()],
-    );
+    state = pruned.consume(bucket);
     await _service.save(state);
     return true;
   }
 
-  Future<void> startServerLockout() async {
-    state = state.pruned().copyWith(
-          serverLockoutUntil: DateTime.now().add(const Duration(seconds: 60)),
+  Future<bool> tryConsumeRemoteRequest() {
+    return tryConsume(QuotaBucket.random);
+  }
+
+  bool canAcquire(QuotaBucket bucket) {
+    return state.pruned().canAcquireFor(bucket);
+  }
+
+  Duration? timeUntilNextAvailable(QuotaBucket bucket) {
+    return state.pruned().timeUntilNextAvailableFor(bucket);
+  }
+
+  Duration serverLockoutRemaining(QuotaBucket bucket) {
+    return state.pruned().serverLockoutRemainingFor(bucket);
+  }
+
+  Future<void> startServerLockout(QuotaBucket bucket) async {
+    state = state.pruned().startServerLockout(
+          bucket,
+          DateTime.now().add(const Duration(minutes: 30)),
         );
     await _service.save(state);
   }
@@ -91,9 +155,14 @@ class QuotaController extends StateNotifier<QuotaState> {
 
   void _tick() {
     final next = state.pruned();
-    if (next.used != state.used ||
-        next.serverLockoutUntil != state.serverLockoutUntil ||
-        next.timeUntilNextAvailable != state.timeUntilNextAvailable) {
+    if (next.random.used != state.random.used ||
+        next.image.used != state.image.used ||
+        next.random.serverLockoutUntil != state.random.serverLockoutUntil ||
+        next.image.serverLockoutUntil != state.image.serverLockoutUntil ||
+        next.random.timeUntilNextAvailable !=
+            state.random.timeUntilNextAvailable ||
+        next.image.timeUntilNextAvailable !=
+            state.image.timeUntilNextAvailable) {
       state = next;
       unawaited(_service.save(state));
     } else {

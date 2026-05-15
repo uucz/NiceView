@@ -78,6 +78,13 @@ class VeilApiClient {
     int limit = 24,
     int offset = 0,
   }) async {
+    return (await tagsPage(limit: limit, offset: offset)).items;
+  }
+
+  Future<PagedResult<TagSummary>> tagsPage({
+    int limit = 24,
+    int offset = 0,
+  }) async {
     final json = await _jsonRequest(
       '/v1/tags',
       queryParameters: {
@@ -85,12 +92,41 @@ class VeilApiClient {
         'offset': offset.toString(),
       },
     );
-    return _items(json).map(TagSummary.fromJson).toList();
+    return _pagedResult(json, TagSummary.fromJson);
   }
 
   Future<List<CategorySummary>> categories() async {
     final json = await _jsonRequest('/v1/categories');
     return _items(json).map(CategorySummary.fromJson).toList();
+  }
+
+  Future<PagedResult<GallerySummary>> galleries({
+    int limit = 24,
+    int offset = 0,
+  }) async {
+    final json = await _jsonRequest(
+      '/v1/galleries',
+      queryParameters: {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      },
+    );
+    return _pagedResult(json, GallerySummary.fromJson);
+  }
+
+  Future<GalleryDetail> gallery(
+    int galleryId, {
+    int imageLimit = 24,
+    int imageOffset = 0,
+  }) async {
+    final json = await _jsonRequest(
+      '/v1/gallery/$galleryId',
+      queryParameters: {
+        'image_limit': imageLimit.toString(),
+        'image_offset': imageOffset.toString(),
+      },
+    );
+    return GalleryDetail.fromJson(json);
   }
 
   Future<TagPreview> tagPreview(String tag) async {
@@ -247,6 +283,20 @@ class VeilApiClient {
     return (json['items'] as List<dynamic>? ?? const <dynamic>[])
         .map((item) => Map<String, Object?>.from(item as Map))
         .toList();
+  }
+
+  PagedResult<T> _pagedResult<T>(
+    Map<String, Object?> json,
+    T Function(Map<String, Object?> json) fromJson,
+  ) {
+    final items = _items(json).map(fromJson).toList();
+    return PagedResult<T>(
+      items: items,
+      total: json['total'] as int? ?? items.length,
+      limit: json['limit'] as int? ?? items.length,
+      offset: json['offset'] as int? ?? 0,
+      hasNext: json['has_next'] as bool? ?? false,
+    );
   }
 
   void _log(String message) {

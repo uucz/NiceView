@@ -13,7 +13,43 @@ class QuotaBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = _quotaStatus(quota);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '请求额度',
+          style: TextStyle(
+            color: niceText,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 10),
+        _QuotaBucketBar(
+          label: '随机 / 元数据',
+          quota: quota.random,
+        ),
+        const SizedBox(height: 12),
+        _QuotaBucketBar(
+          label: '图片预览',
+          quota: quota.image,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuotaBucketBar extends StatelessWidget {
+  const _QuotaBucketBar({
+    required this.label,
+    required this.quota,
+  });
+
+  final String label;
+  final QuotaWindowState quota;
+
+  @override
+  Widget build(BuildContext context) {
     final color = quota.progress >= 0.9
         ? niceDanger
         : quota.progress >= 0.7
@@ -25,42 +61,42 @@ class QuotaBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              '请求额度',
-              style: TextStyle(
-                color: niceText,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
+            Text(
+              label,
+              style: const TextStyle(color: niceMuted, fontSize: 12),
             ),
             Text(
-              '${quota.used} / ${quota.limit} 次',
-              style: const TextStyle(color: niceMuted, fontSize: 13),
+              '${quota.used} / ${quota.limit}',
+              style: const TextStyle(color: niceMuted, fontSize: 12),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: LinearProgressIndicator(
             value: quota.progress.clamp(0.0, 1.0).toDouble(),
-            minHeight: 8,
+            minHeight: 7,
             backgroundColor: Colors.white.withValues(alpha: 0.10),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
-          status,
-          style: TextStyle(color: color, fontSize: 12),
+          _quotaStatus(quota),
+          style: TextStyle(color: color, fontSize: 11),
         ),
       ],
     );
   }
 
-  String _quotaStatus(QuotaState quota) {
+  String _quotaStatus(QuotaWindowState quota) {
     final serverLockout = quota.serverLockoutRemaining;
     if (serverLockout > Duration.zero) {
+      final minutes = serverLockout.inMinutes;
+      if (minutes > 0) {
+        return '约 ${minutes + 1} 分钟后解除服务器冷却';
+      }
       return '${serverLockout.inSeconds}s 后解除服务器冷却';
     }
 

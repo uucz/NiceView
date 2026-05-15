@@ -20,6 +20,13 @@ class SideInfoDrawer extends StatefulWidget {
     required this.onToggleExcludeTag,
     required this.onClearFilters,
     required this.onOpenHistory,
+    required this.onOpenTagBrowser,
+    required this.onOpenGalleries,
+    required this.onOpenGallery,
+    required this.onOpenSettings,
+    required this.onSaveDefaultQuery,
+    required this.onClearDefaultQuery,
+    required this.onAddUserTag,
     super.key,
   });
 
@@ -34,6 +41,13 @@ class SideInfoDrawer extends StatefulWidget {
   final ValueChanged<String> onToggleExcludeTag;
   final VoidCallback onClearFilters;
   final VoidCallback onOpenHistory;
+  final VoidCallback onOpenTagBrowser;
+  final VoidCallback onOpenGalleries;
+  final ValueChanged<int> onOpenGallery;
+  final VoidCallback onOpenSettings;
+  final VoidCallback onSaveDefaultQuery;
+  final VoidCallback onClearDefaultQuery;
+  final ValueChanged<String> onAddUserTag;
 
   @override
   State<SideInfoDrawer> createState() => _SideInfoDrawerState();
@@ -75,6 +89,28 @@ class _SideInfoDrawerState extends State<SideInfoDrawer> {
             ),
             const SizedBox(height: 16),
             QuotaBar(quota: widget.quota),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onSaveDefaultQuery,
+                    icon: const Icon(Icons.bookmark_add_rounded),
+                    label: const Text('保存默认'),
+                    style: _outlinedStyle(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.onClearDefaultQuery,
+                    icon: const Icon(Icons.restart_alt_rounded),
+                    label: const Text('清除默认'),
+                    style: _outlinedStyle(),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 24),
             const _SectionLabel('方向'),
             const SizedBox(height: 10),
@@ -118,6 +154,13 @@ class _SideInfoDrawerState extends State<SideInfoDrawer> {
               ],
             ),
             const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: widget.onOpenTagBrowser,
+              icon: const Icon(Icons.sell_rounded),
+              label: const Text('打开完整标签浏览'),
+              style: _outlinedStyle(),
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _searchController,
               style: const TextStyle(color: niceText),
@@ -147,10 +190,31 @@ class _SideInfoDrawerState extends State<SideInfoDrawer> {
               leading: const Icon(Icons.history_rounded, color: niceMuted),
               title: const Text('浏览历史'),
               subtitle: Text(
-                '${state.historyImages.length} / 30  ·  收藏 ${state.favoriteImages.length}',
+                '${state.historyImages.length} / ${state.historyLimit}  ·  收藏 ${state.favoriteImages.length}',
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: widget.onOpenHistory,
+              textColor: niceText,
+              iconColor: niceMuted,
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading:
+                  const Icon(Icons.photo_library_rounded, color: niceMuted),
+              title: const Text('图集浏览'),
+              subtitle: const Text('按图集继续看同一组图片'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: widget.onOpenGalleries,
+              textColor: niceText,
+              iconColor: niceMuted,
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.settings_rounded, color: niceMuted),
+              title: const Text('设置与数据'),
+              subtitle: const Text('缓存、历史上限和默认偏好'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: widget.onOpenSettings,
               textColor: niceText,
               iconColor: niceMuted,
             ),
@@ -163,7 +227,13 @@ class _SideInfoDrawerState extends State<SideInfoDrawer> {
             _InfoRow(label: '方向', value: image?.orientation?.label),
             _InfoRow(label: '尺寸', value: _formatSize(image?.width, image?.height)),
             _InfoRow(label: '分类', value: image?.galleryCategory),
-            _InfoRow(label: '图集', value: image?.galleryTitle),
+            if (image?.galleryId != null && image?.galleryTitle != null)
+              _GalleryInfoRow(
+                title: image!.galleryTitle!,
+                onOpen: () => widget.onOpenGallery(image.galleryId!),
+              )
+            else
+              _InfoRow(label: '图集', value: image?.galleryTitle),
             _InfoRow(label: 'Content-Type', value: image?.contentType),
             _InfoRow(label: '获取时间', value: _formatTime(image?.fetchedAt)),
             if (image != null && image.tags.isNotEmpty) ...[
@@ -174,7 +244,8 @@ class _SideInfoDrawerState extends State<SideInfoDrawer> {
                 children: image.tags.take(8).map((tag) {
                   return ActionChip(
                     label: Text(tag),
-                    onPressed: () => widget.onTagSelected(tag),
+                    avatar: const Icon(Icons.more_horiz_rounded, size: 16),
+                    onPressed: () => _showImageTagActions(context, tag),
                     backgroundColor: Colors.white.withValues(alpha: 0.08),
                     side: BorderSide(
                       color: Colors.white.withValues(alpha: 0.12),
@@ -241,7 +312,73 @@ class _SideInfoDrawerState extends State<SideInfoDrawer> {
       ),
     );
   }
+
+  Future<void> _showImageTagActions(BuildContext context, String tag) async {
+    final excluded = widget.state.query.excludeTags.any(
+      (item) => item.toLowerCase() == tag.toLowerCase(),
+    );
+    final action = await showModalBottomSheet<_ImageTagAction>(
+      context: context,
+      backgroundColor: const Color(0xFF17181A),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text(tag, overflow: TextOverflow.ellipsis),
+                textColor: niceText,
+              ),
+              ListTile(
+                leading: const Icon(Icons.sell_rounded),
+                title: const Text('使用标签'),
+                onTap: () => Navigator.of(context).pop(_ImageTagAction.use),
+              ),
+              ListTile(
+                leading: const Icon(Icons.grid_view_rounded),
+                title: const Text('预览标签'),
+                onTap: () => Navigator.of(context).pop(_ImageTagAction.preview),
+              ),
+              ListTile(
+                leading: Icon(
+                  excluded
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_off_rounded,
+                ),
+                title: Text(excluded ? '取消排除' : '加入排除'),
+                onTap: () => Navigator.of(context).pop(_ImageTagAction.exclude),
+              ),
+              ListTile(
+                leading: const Icon(Icons.playlist_add_rounded),
+                title: const Text('加入我的标签'),
+                onTap: () => Navigator.of(context).pop(_ImageTagAction.add),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted || action == null) {
+      return;
+    }
+    switch (action) {
+      case _ImageTagAction.use:
+        widget.onTagSelected(tag);
+        break;
+      case _ImageTagAction.preview:
+        widget.onPreviewTag(tag);
+        break;
+      case _ImageTagAction.exclude:
+        widget.onToggleExcludeTag(tag);
+        break;
+      case _ImageTagAction.add:
+        widget.onAddUserTag(tag);
+        break;
+    }
+  }
 }
+
+enum _ImageTagAction { use, preview, exclude, add }
 
 class _DirectionFilter extends StatelessWidget {
   const _DirectionFilter({
@@ -584,6 +721,55 @@ class _InfoRow extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
               style: const TextStyle(color: niceText, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GalleryInfoRow extends StatelessWidget {
+  const _GalleryInfoRow({
+    required this.title,
+    required this.onOpen,
+  });
+
+  final String title;
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(
+            width: 92,
+            child: Text(
+              '图集',
+              style: TextStyle(color: niceMuted, fontSize: 12),
+            ),
+          ),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onOpen,
+                icon: const Icon(Icons.photo_library_rounded, size: 16),
+                label: Text(
+                  title,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: niceAmber,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 28),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
             ),
           ),
         ],

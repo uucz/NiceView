@@ -6,8 +6,10 @@
 
 - iOS 保存到系统相册
 - 方向筛选、分类筛选、标签发现和标签预览
+- 完整标签浏览、图集列表和同图集继续浏览
 - 独立收藏缓存，收藏不会被浏览历史上限淘汰
-- 浏览历史与收藏视图
+- 浏览历史、收藏视图、默认偏好和缓存数据管理
+- iOS haptic、App icon 与 launch screen 注入
 
 ## iOS / AltStore
 
@@ -38,7 +40,7 @@ https://uucz.github.io/NiceView/source.json
 本地或 CI 构建未签名 IPA：
 
 ```bash
-scripts/build_unsigned_ios_ipa.sh 0.3.0 1
+scripts/build_unsigned_ios_ipa.sh 0.4.0 1
 ```
 
 ## 友情链接

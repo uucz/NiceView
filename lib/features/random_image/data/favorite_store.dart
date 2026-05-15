@@ -147,6 +147,31 @@ class FavoriteStore {
     return images;
   }
 
+  Future<List<HistoryImage>> clear() async {
+    final images = await load();
+    for (final image in images) {
+      await _deleteFile(image.localFilePath);
+    }
+    await _preferences.remove(_favoritesKey);
+    return <HistoryImage>[];
+  }
+
+  Future<int> cacheSizeBytes() async {
+    final directory = Directory(
+      p.join((await getApplicationSupportDirectory()).path, 'favorites'),
+    );
+    if (!await directory.exists()) {
+      return 0;
+    }
+    var size = 0;
+    await for (final entity in directory.list(recursive: true)) {
+      if (entity is File) {
+        size += await entity.length();
+      }
+    }
+    return size;
+  }
+
   Future<String> _copyIntoFavoriteCache(
     File source,
     String favoriteId,

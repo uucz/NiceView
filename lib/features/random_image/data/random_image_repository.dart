@@ -8,28 +8,32 @@ import 'package:path_provider/path_provider.dart';
 import '../../../services/app_exceptions.dart';
 import '../../../services/quota_service.dart';
 import '../domain/image_query.dart';
+import '../domain/quota_state.dart';
 import '../domain/random_image.dart';
+import 'tag_preview_cache.dart';
 import 'veil_api_client.dart';
 
 final randomImageRepositoryProvider = Provider<RandomImageRepository>((ref) {
   return RandomImageRepository(
     ref.watch(veilApiClientProvider),
     ref.read(quotaControllerProvider.notifier),
+    ref.watch(tagPreviewCacheProvider),
   );
 });
 
 class RandomImageRepository {
-  RandomImageRepository(this._apiClient, this._quotaController);
+  RandomImageRepository(
+    this._apiClient,
+    this._quotaController,
+    this._tagPreviewCache,
+  );
 
   final VeilApiClient _apiClient;
   final QuotaController _quotaController;
+  final TagPreviewCache _tagPreviewCache;
 
   Future<RandomImage> fetchRandom({ImageQuery query = const ImageQuery()}) {
-    return _quotaGuardedFetch(
-      () => _fetchRandomResponse(query),
-      sourceTag: query.tag,
-      queryKey: query.cacheKey,
-    );
+    return _fetchRandomResponse(query);
   }
 
   Future<RandomImage> fetchImageById(
@@ -38,6 +42,7 @@ class RandomImageRepository {
     String? queryKey,
   }) {
     return _quotaGuardedFetch(
+      QuotaBucket.image,
       () => _apiClient.imageById(imageId),
       sourceTag: sourceTag,
       queryKey: queryKey,
@@ -45,64 +50,162 @@ class RandomImageRepository {
   }
 
   Future<List<TagSummary>> featuredTags() {
-    return _apiClient.featuredTags();
+    return _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.featuredTags(),
+    );
   }
 
   Future<List<TagSummary>> tags({int limit = 24, int offset = 0}) {
-    return _apiClient.tags(limit: limit, offset: offset);
+    return _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.tags(limit: limit, offset: offset),
+    );
+  }
+
+  Future<PagedResult<TagSummary>> tagsPage({
+    int limit = 24,
+    int offset = 0,
+  }) {
+    return _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.tagsPage(limit: limit, offset: offset),
+    );
   }
 
   Future<List<CategorySummary>> categories() {
-    return _apiClient.categories();
+    return _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.categories(),
+    );
+  }
+
+  Future<PagedResult<GallerySummary>> galleries({
+    int limit = 24,
+    int offset = 0,
+  }) {
+    return _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.galleries(limit: limit, offset: offset),
+    );
+  }
+
+  Future<GalleryDetail> gallery(
+    int galleryId, {
+    int imageLimit = 24,
+    int imageOffset = 0,
+  }) {
+    return _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.gallery(
+        galleryId,
+        imageLimit: imageLimit,
+        imageOffset: imageOffset,
+      ),
+    );
   }
 
   Future<List<RandomImage>> tagPreviewImages(String tag) async {
-    final preview = await _apiClient.tagPreview(tag);
+    await _tagPreviewCache.evictExpired();
+    final cachedImages = await _tagPreviewCache.read(tag);
+    if (cachedImages != null) {
+      return cachedImages;
+    }
+
+    final preview = await _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.tagPreview(tag),
+    );
     final images = <RandomImage>[];
     for (final imageId in preview.imageIds) {
-      final response = await _apiClient.imageById(imageId);
       images.add(
-        await _persistResponse(
-          response,
+        await fetchImageById(
+          imageId,
           sourceTag: tag,
           queryKey: ImageQuery(tag: tag).cacheKey,
         ),
       );
     }
+    await _tagPreviewCache.write(tag, images);
     return images;
   }
 
   Future<RandomImage> _quotaGuardedFetch(
+    QuotaBucket bucket,
     Future<VeilImageResponse> Function() request, {
     String? sourceTag,
     String? queryKey,
   }) async {
-    final allowed = await _quotaController.tryConsumeRemoteRequest();
+    final response = await _quotaGuardedRequest(bucket, request);
+    return _persistResponse(
+      response,
+      sourceTag: sourceTag,
+      queryKey: queryKey,
+    );
+  }
+
+  Future<RandomImage> _fetchRandomResponse(ImageQuery query) async {
+    if (!query.usesMetaEndpoint) {
+      return _quotaGuardedFetch(
+        QuotaBucket.random,
+        () => _apiClient.random(query: query),
+        sourceTag: query.tag,
+        queryKey: query.cacheKey,
+      );
+    }
+
+    if (!_quotaController.canAcquire(QuotaBucket.image)) {
+      throw QuotaExceededException(_quotaExceededMessage(QuotaBucket.image));
+    }
+
+    final meta = await _quotaGuardedRequest(
+      QuotaBucket.random,
+      () => _apiClient.randomMeta(query: query),
+    );
+    final response = await _quotaGuardedRequest(
+      QuotaBucket.image,
+      () => _apiClient.imageById(meta.id),
+    );
+    return _persistResponse(
+      response.withMeta(meta),
+      sourceTag: query.tag,
+      queryKey: query.cacheKey,
+    );
+  }
+
+  Future<T> _quotaGuardedRequest<T>(
+    QuotaBucket bucket,
+    Future<T> Function() request,
+  ) async {
+    final allowed = await _quotaController.tryConsume(bucket);
     if (!allowed) {
-      throw const QuotaExceededException('请求额度已用尽');
+      throw QuotaExceededException(_quotaExceededMessage(bucket));
     }
 
     try {
-      final response = await request();
-      return _persistResponse(
-        response,
-        sourceTag: sourceTag,
-        queryKey: queryKey,
-      );
+      return await request();
     } on ServerLockoutException {
-      await _quotaController.startServerLockout();
-      rethrow;
+      await _quotaController.startServerLockout(bucket);
+      throw ServerLockoutException(
+        '${bucket.label}触发服务器冷却，请稍后再试',
+      );
     }
   }
 
-  Future<VeilImageResponse> _fetchRandomResponse(ImageQuery query) async {
-    if (!query.usesMetaEndpoint) {
-      return _apiClient.random(query: query);
+  String _quotaExceededMessage(QuotaBucket bucket) {
+    final lockout = _quotaController.serverLockoutRemaining(bucket);
+    if (lockout > Duration.zero) {
+      final minutes = lockout.inMinutes;
+      if (minutes > 0) {
+        return '${bucket.label}正在服务器冷却，约 ${minutes + 1} 分钟后再试';
+      }
+      return '${bucket.label}正在服务器冷却，${lockout.inSeconds}s 后再试';
     }
-
-    final meta = await _apiClient.randomMeta(query: query);
-    final response = await _apiClient.imageById(meta.id);
-    return response.withMeta(meta);
+    final wait = _quotaController.timeUntilNextAvailable(bucket)?.inSeconds;
+    if (wait == null || wait <= 0) {
+      return '${bucket.label}额度已用尽，请稍后再试';
+    }
+    return '${bucket.label}额度已用尽，约 ${wait}s 后恢复';
   }
 
   Future<RandomImage> _persistResponse(

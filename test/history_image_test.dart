@@ -124,4 +124,70 @@ void main() {
     expect(meta.gallery?.category, 'Europe');
     expect(meta.tags, ['Metart', 'Veto']);
   });
+
+  test('gallery summary parses cover metadata', () {
+    final gallery = GallerySummary.fromJson({
+      'id': 62942,
+      'title': 'XiuRen No.4948',
+      'series_number': 'No.4948',
+      'category': 'XiuRen',
+      'image_count': 53,
+      'uploaded_images': 12,
+      'updated_at': '2026-05-14T00:04:30.583210+00:00',
+      'cover': {
+        'image_id': 3442205,
+        'width': 1200,
+        'height': 1800,
+        'orientation': 'portrait',
+      },
+    });
+
+    expect(gallery.id, 62942);
+    expect(gallery.cover?.imageId, 3442205);
+    expect(gallery.cover?.orientation, ImageOrientation.portrait);
+    expect(gallery.imageCount, 53);
+  });
+
+  test('gallery detail parses image pagination without external fields', () {
+    final detail = GalleryDetail.fromJson({
+      'id': 921,
+      'title': 'MetArt Yanika',
+      'category': 'Europe',
+      'image_count': 62,
+      'cover_image_id': 53764,
+      'source_page_url': 'https://example.invalid/source',
+      'download_links': [
+        {'url': 'https://example.invalid/download'},
+      ],
+      'attachments': [
+        {'url': 'https://example.invalid/file'},
+      ],
+      'tags': ['Metart', 'Veto'],
+      'images': [
+        {
+          'id': 53764,
+          'sort_order': 1,
+          'width': 1200,
+          'height': 1800,
+          'orientation': 'portrait',
+          'file_size_bytes': 223611,
+          'status': 'active',
+          'uploaded': true,
+        },
+      ],
+      'images_pagination': {
+        'total': 62,
+        'limit': 1,
+        'offset': 0,
+        'has_next': true,
+      },
+    });
+
+    expect(detail.id, 921);
+    expect(detail.tags, ['Metart', 'Veto']);
+    expect(detail.images.single.id, 53764);
+    expect(detail.images.single.orientation, ImageOrientation.portrait);
+    expect(detail.imagePage.total, 62);
+    expect(detail.hasMoreImages, isTrue);
+  });
 }

@@ -12,6 +12,7 @@ import '../../tags/data/local_tag_store.dart';
 import '../data/favorite_store.dart';
 import '../data/history_store.dart';
 import '../data/random_image_repository.dart';
+import '../data/user_preferences_store.dart';
 import '../domain/history_image.dart';
 import '../domain/image_query.dart';
 import '../domain/quota_state.dart';
@@ -24,6 +25,7 @@ final randomImageControllerProvider =
     tagStore: ref.watch(localTagStoreProvider),
     historyStore: ref.watch(historyStoreProvider),
     favoriteStore: ref.watch(favoriteStoreProvider),
+    preferencesStore: ref.watch(userPreferencesStoreProvider),
     downloadService: ref.watch(downloadServiceProvider),
     quotaController: ref.read(quotaControllerProvider.notifier),
     readQuotaState: () => ref.read(quotaControllerProvider),
@@ -54,6 +56,7 @@ class RandomImageViewState {
     required this.categories,
     required this.isDiscoveryLoading,
     required this.favoriteImages,
+    required this.historyLimit,
     this.currentImage,
     this.selectedTag,
     this.errorMessage,
@@ -79,6 +82,7 @@ class RandomImageViewState {
       categories: [],
       isDiscoveryLoading: false,
       favoriteImages: [],
+      historyLimit: 30,
     );
   }
 
@@ -101,6 +105,7 @@ class RandomImageViewState {
   final List<CategorySummary> categories;
   final bool isDiscoveryLoading;
   final List<HistoryImage> favoriteImages;
+  final int historyLimit;
   final String? errorMessage;
   final String? lastLoadError;
 
@@ -124,6 +129,7 @@ class RandomImageViewState {
     List<CategorySummary>? categories,
     bool? isDiscoveryLoading,
     List<HistoryImage>? favoriteImages,
+    int? historyLimit,
     Object? errorMessage = _unset,
     Object? lastLoadError = _unset,
   }) {
@@ -152,6 +158,7 @@ class RandomImageViewState {
       categories: categories ?? this.categories,
       isDiscoveryLoading: isDiscoveryLoading ?? this.isDiscoveryLoading,
       favoriteImages: favoriteImages ?? this.favoriteImages,
+      historyLimit: historyLimit ?? this.historyLimit,
       errorMessage: identical(errorMessage, _unset)
           ? this.errorMessage
           : errorMessage as String?,
@@ -162,12 +169,30 @@ class RandomImageViewState {
   }
 }
 
+class CacheUsage {
+  const CacheUsage({
+    required this.historyBytes,
+    required this.favoriteBytes,
+    required this.preloadBytes,
+    required this.temporaryBytes,
+  });
+
+  final int historyBytes;
+  final int favoriteBytes;
+  final int preloadBytes;
+  final int temporaryBytes;
+
+  int get totalBytes =>
+      historyBytes + favoriteBytes + preloadBytes + temporaryBytes;
+}
+
 class RandomImageController extends StateNotifier<RandomImageViewState> {
   RandomImageController({
     required RandomImageRepository repository,
     required LocalTagStore tagStore,
     required HistoryStore historyStore,
     required FavoriteStore favoriteStore,
+    required UserPreferencesStore preferencesStore,
     required DownloadService downloadService,
     required QuotaController quotaController,
     required QuotaState Function() readQuotaState,
@@ -175,6 +200,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         _tagStore = tagStore,
         _historyStore = historyStore,
         _favoriteStore = favoriteStore,
+        _preferencesStore = preferencesStore,
         _downloadService = downloadService,
         _quotaController = quotaController,
         _readQuotaState = readQuotaState,
@@ -184,6 +210,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
   final LocalTagStore _tagStore;
   final HistoryStore _historyStore;
   final FavoriteStore _favoriteStore;
+  final UserPreferencesStore _preferencesStore;
   final DownloadService _downloadService;
   final QuotaController _quotaController;
   final QuotaState Function() _readQuotaState;
@@ -208,10 +235,12 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     if (effectiveSelectedTag != selectedTag) {
       await _tagStore.saveSelectedTag(effectiveSelectedTag);
     }
-    final initialQuery = ImageQuery(tag: effectiveSelectedTag);
+    final defaultQuery = _preferencesStore.loadDefaultQuery();
+    final initialQuery = defaultQuery.copyWith(tag: effectiveSelectedTag);
 
     var historyImages = await _historyStore.load();
     final favoriteImages = await _favoriteStore.load();
+    final historyLimit = _historyStore.loadHistoryLimit();
     var restoredImage = await _restoreLastCurrent(historyImages);
     var preloadQueue = await _historyStore.loadPreloadQueue(
       queryKey: initialQuery.cacheKey,
@@ -253,6 +282,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
       query: initialQuery,
       historyImages: historyImages,
       favoriteImages: favoriteImages,
+      historyLimit: historyLimit,
       preloadTarget: _defaultPreloadTarget,
       isInitialLoading: restoredImage == null,
     );
@@ -276,8 +306,13 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     if (state.isInitialLoading || state.isNextLoading) {
       return;
     }
-    if (_readQuotaState().isServerLocked) {
-      state = state.copyWith(errorMessage: '歇 60 秒，让服务器也喝口水。');
+    final quota = _readQuotaState();
+    if (quota.isServerLocked) {
+      final remaining = quota.serverLockoutRemaining;
+      final label = remaining.inMinutes > 0
+          ? '约 ${remaining.inMinutes + 1} 分钟'
+          : '${remaining.inSeconds.clamp(1, 60).toInt()} 秒';
+      state = state.copyWith(errorMessage: '随机/元数据正在服务器冷却，$label 后再试');
       return;
     }
 
@@ -419,7 +454,7 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     }
   }
 
-  Future<bool> addTag(String value) async {
+  Future<bool> addTag(String value, {bool switchTo = true}) async {
     final tag = value.trim();
     if (tag.isEmpty) {
       state = state.copyWith(errorMessage: '标签不能为空');
@@ -437,7 +472,11 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     final tags = [...state.userTags, tag];
     await _tagStore.saveTags(tags);
     state = state.copyWith(userTags: tags);
-    await switchTag(tag);
+    if (switchTo) {
+      await switchTag(tag);
+    } else {
+      state = state.copyWith(errorMessage: '已加入我的标签');
+    }
     return true;
   }
 
@@ -465,8 +504,10 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         if (imageId == null) {
           throw const NiceViewException('当前图片已丢失，请切换下一张后再下载');
         }
-        if (!_readQuotaState().canAcquire) {
-          throw QuotaExceededException(_quotaRecoveryMessage());
+        if (!_readQuotaState().canAcquireFor(QuotaBucket.image)) {
+          throw QuotaExceededException(
+            _quotaRecoveryMessage(QuotaBucket.image),
+          );
         }
         imageToSave = await _repository.fetchImageById(
           imageId,
@@ -511,8 +552,10 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         }
         throw const NiceViewException('这张历史图已经不在本机了');
       }
-      if (!_readQuotaState().canAcquire) {
-        throw QuotaExceededException(_quotaRecoveryMessage());
+      if (!_readQuotaState().canAcquireFor(QuotaBucket.image)) {
+        throw QuotaExceededException(
+          _quotaRecoveryMessage(QuotaBucket.image),
+        );
       }
 
       imageToSave = await _repository.fetchImageById(
@@ -553,8 +596,10 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         if (imageId == null) {
           throw const NiceViewException('当前图片已丢失，请切换下一张后再收藏');
         }
-        if (!_readQuotaState().canAcquire) {
-          throw QuotaExceededException(_quotaRecoveryMessage());
+        if (!_readQuotaState().canAcquireFor(QuotaBucket.image)) {
+          throw QuotaExceededException(
+            _quotaRecoveryMessage(QuotaBucket.image),
+          );
         }
         final restored = await _repository.fetchImageById(
           imageId,
@@ -592,8 +637,10 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         if (imageId == null) {
           throw const NiceViewException('这张图片已经不在本机了');
         }
-        if (!_readQuotaState().canAcquire) {
-          throw QuotaExceededException(_quotaRecoveryMessage());
+        if (!_readQuotaState().canAcquireFor(QuotaBucket.image)) {
+          throw QuotaExceededException(
+            _quotaRecoveryMessage(QuotaBucket.image),
+          );
         }
         final restored = await _repository.fetchImageById(
           imageId,
@@ -650,6 +697,97 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
         errorMessage: '这张历史图已经不在本机了',
       );
     }
+  }
+
+  Future<void> useRandomImage(RandomImage image) async {
+    final historyImages = await _historyStore.upsertFromRandomImage(image);
+    final current = historyImages.isEmpty
+        ? image
+        : _randomImageFromHistory(historyImages.first);
+    _rememberImageId(current.imageId);
+    if (mounted) {
+      state = state.copyWith(
+        currentImage: current,
+        historyImages: historyImages,
+        isImageZoomed: false,
+        errorMessage: '已切换到图集图片',
+      );
+      unawaited(_fillPreloadQueue(_generation));
+    }
+  }
+
+  Future<void> saveCurrentQueryAsDefault() async {
+    await _preferencesStore.saveDefaultQuery(
+      ImageQuery(
+        orientation: state.query.orientation,
+        category: state.query.category,
+        excludeTags: state.query.excludeTags,
+      ),
+    );
+    if (mounted) {
+      state = state.copyWith(errorMessage: '已保存为默认偏好');
+    }
+  }
+
+  Future<void> clearDefaultQuery() async {
+    await _preferencesStore.clearDefaultQuery();
+    if (mounted) {
+      state = state.copyWith(errorMessage: '已清除默认偏好');
+    }
+  }
+
+  Future<void> updateHistoryLimit(int limit) async {
+    final images = await _historyStore.saveHistoryLimit(limit);
+    if (mounted) {
+      state = state.copyWith(
+        historyImages: images,
+        historyLimit: _historyStore.loadHistoryLimit(),
+        errorMessage: '已更新历史上限',
+      );
+    }
+  }
+
+  Future<void> clearHistory() async {
+    final images = await _historyStore.clearHistory();
+    if (mounted) {
+      state = state.copyWith(
+        historyImages: images,
+        errorMessage: '已清空浏览历史',
+      );
+    }
+  }
+
+  Future<void> clearFavorites() async {
+    final favorites = await _favoriteStore.clear();
+    if (mounted) {
+      state = state.copyWith(
+        favoriteImages: favorites,
+        errorMessage: '已清空收藏',
+      );
+    }
+  }
+
+  Future<void> clearTemporaryCache() async {
+    await _historyStore.clearTemporaryImageCache();
+    if (mounted) {
+      state = state.copyWith(
+        preloadQueue: const [],
+        errorMessage: '已清理临时缓存',
+      );
+    }
+  }
+
+  Future<CacheUsage> loadCacheUsage() async {
+    final historyBytes = await _historyStore.historyCacheSizeBytes();
+    final favoriteBytes = await _favoriteStore.cacheSizeBytes();
+    final preloadBytes = await _historyStore.preloadCacheSizeBytes();
+    final temporaryBytes = await _historyStore.temporaryImageCacheSizeBytes();
+    return CacheUsage(
+      historyBytes: historyBytes,
+      favoriteBytes: favoriteBytes,
+      preloadBytes: preloadBytes,
+      temporaryBytes: temporaryBytes,
+    );
   }
 
   void clearMessage() {
@@ -986,20 +1124,29 @@ class RandomImageController extends StateNotifier<RandomImageViewState> {
     }
   }
 
-  String _quotaRecoveryMessage() {
-    final wait = _readQuotaState().timeUntilNextAvailable;
-    if (wait == null || wait.inSeconds <= 0) {
-      return '请求额度已用尽，请稍后再试';
+  String _quotaRecoveryMessage([QuotaBucket bucket = QuotaBucket.random]) {
+    final quota = _readQuotaState();
+    final lockout = quota.serverLockoutRemainingFor(bucket);
+    if (lockout > Duration.zero) {
+      final minutes = lockout.inMinutes;
+      if (minutes > 0) {
+        return '${bucket.label}正在服务器冷却，约 ${minutes + 1} 分钟后再试';
+      }
+      return '${bucket.label}正在服务器冷却，${lockout.inSeconds}s 后再试';
     }
-    return '请求额度已用尽，约 ${wait.inSeconds}s 后恢复';
+    final wait = quota.timeUntilNextAvailableFor(bucket);
+    if (wait == null || wait.inSeconds <= 0) {
+      return '${bucket.label}额度已用尽，请稍后再试';
+    }
+    return '${bucket.label}额度已用尽，约 ${wait.inSeconds}s 后恢复';
   }
 
   String _messageForError(Object error) {
     if (error is ServerLockoutException) {
-      return '歇 60 秒，让服务器也喝口水。';
+      return error.message;
     }
     if (error is QuotaExceededException) {
-      return _quotaRecoveryMessage();
+      return error.message;
     }
     if (error is EmptyTagException) {
       return '该标签暂时没有图片';

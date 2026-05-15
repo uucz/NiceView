@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../app/theme.dart';
+import '../../../../services/app_exceptions.dart';
 import '../../data/random_image_repository.dart';
 import '../../domain/random_image.dart';
 
@@ -80,7 +81,10 @@ class _TagPreviewSheetState extends ConsumerState<TagPreviewSheet> {
                       );
                     }
                     if (snapshot.hasError) {
-                      return _PreviewError(onRetry: _retry);
+                      return _PreviewError(
+                        message: _messageForError(snapshot.error),
+                        onRetry: _retry,
+                      );
                     }
                     final images = snapshot.data ?? const <RandomImage>[];
                     if (images.isEmpty) {
@@ -147,8 +151,12 @@ class _TagPreviewSheetState extends ConsumerState<TagPreviewSheet> {
 }
 
 class _PreviewError extends StatelessWidget {
-  const _PreviewError({required this.onRetry});
+  const _PreviewError({
+    required this.message,
+    required this.onRetry,
+  });
 
+  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -159,7 +167,11 @@ class _PreviewError extends StatelessWidget {
         children: [
           const Icon(Icons.broken_image_outlined, color: niceMuted, size: 32),
           const SizedBox(height: 10),
-          const Text('预览加载失败', style: TextStyle(color: niceMuted)),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: niceMuted),
+          ),
           const SizedBox(height: 12),
           OutlinedButton.icon(
             onPressed: onRetry,
@@ -170,4 +182,11 @@ class _PreviewError extends StatelessWidget {
       ),
     );
   }
+}
+
+String _messageForError(Object? error) {
+  if (error is NiceViewException) {
+    return error.message;
+  }
+  return '预览加载失败';
 }

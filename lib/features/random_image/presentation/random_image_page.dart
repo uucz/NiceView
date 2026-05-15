@@ -1,12 +1,19 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../../app/theme.dart';
 import '../../../services/quota_service.dart';
+import '../data/user_preferences_store.dart';
+import 'gallery_browser_page.dart';
+import 'gallery_detail_page.dart';
 import 'history_page.dart';
 import 'random_image_controller.dart';
+import 'settings_page.dart';
+import 'tag_browser_page.dart';
 import 'widgets/floating_download_button.dart';
 import 'widgets/floating_next_button.dart';
 import 'widgets/image_stage.dart';
@@ -32,6 +39,9 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
       vsync: this,
       duration: const Duration(milliseconds: 220),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_maybeShowIntro());
+    });
   }
 
   @override
@@ -87,7 +97,7 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                     !state.isNextLoading &&
                     (state.preloadQueue.isNotEmpty || quota.canAcquire);
                 final drawerDragEnabled =
-                    !state.isImageZoomed && !quota.isServerLocked;
+                    !state.isImageZoomed && !quota.anyServerLocked;
                 final currentImageId = state.currentImage?.imageId;
                 final isCurrentFavorite = currentImageId != null &&
                     state.favoriteImages
@@ -117,8 +127,12 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                                   state.isInitialLoading || state.isNextLoading,
                               errorMessage: state.lastLoadError,
                               onRetry: controller.retryCurrent,
+                              onOpenHistory: () => _openHistory(),
+                              onOpenFavorites: () => _openHistory(
+                                showFavorites: true,
+                              ),
                               onSwipeLeft: () {
-                                if (!quota.isServerLocked &&
+                                if (!quota.anyServerLocked &&
                                     !state.isImageZoomed) {
                                   _openDrawer();
                                 }
@@ -134,27 +148,54 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                             ),
                             Positioned(
                               top: padding.top + 18,
-                              right: 22,
-                              child: IconButton.filled(
-                                tooltip: isCurrentFavorite ? '取消收藏' : '收藏',
-                                onPressed: state.currentImage == null
-                                    ? null
-                                    : controller.toggleCurrentFavorite,
-                                icon: Icon(
-                                  isCurrentFavorite
-                                      ? Icons.favorite_rounded
-                                      : Icons.favorite_border_rounded,
+                              left: 22,
+                              child: Semantics(
+                                button: true,
+                                label: '打开筛选和信息',
+                                child: IconButton.filled(
+                                  tooltip: '筛选和信息',
+                                  onPressed: _openDrawer,
+                                  icon: const Icon(Icons.tune_rounded),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.black.withValues(alpha: 0.48),
+                                    foregroundColor: niceText,
+                                  ),
                                 ),
-                                style: IconButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.black.withValues(alpha: 0.48),
-                                  foregroundColor: isCurrentFavorite
-                                      ? niceDanger
-                                      : niceText,
-                                  disabledBackgroundColor:
-                                      Colors.black.withValues(alpha: 0.24),
-                                  disabledForegroundColor:
-                                      niceMuted.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            Positioned(
+                              top: padding.top + 18,
+                              right: 22,
+                              child: Semantics(
+                                button: true,
+                                label: isCurrentFavorite ? '取消收藏' : '收藏',
+                                child: IconButton.filled(
+                                  tooltip: isCurrentFavorite ? '取消收藏' : '收藏',
+                                  onPressed: state.currentImage == null
+                                      ? null
+                                      : () {
+                                          _impact();
+                                          unawaited(
+                                            controller.toggleCurrentFavorite(),
+                                          );
+                                        },
+                                  icon: Icon(
+                                    isCurrentFavorite
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor:
+                                        Colors.black.withValues(alpha: 0.48),
+                                    foregroundColor: isCurrentFavorite
+                                        ? niceDanger
+                                        : niceText,
+                                    disabledBackgroundColor:
+                                        Colors.black.withValues(alpha: 0.24),
+                                    disabledForegroundColor:
+                                        niceMuted.withValues(alpha: 0.5),
+                                  ),
                                 ),
                               ),
                             ),
@@ -162,10 +203,15 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                               left: 22,
                               bottom: padding.bottom + 22,
                               child: FloatingDownloadButton(
-                                onPressed: quota.isServerLocked ||
+                                onPressed: quota.image.isServerLocked ||
                                         state.currentImage == null
                                     ? null
-                                    : controller.downloadCurrentImage,
+                                    : () {
+                                        _impact();
+                                        unawaited(
+                                          controller.downloadCurrentImage(),
+                                        );
+                                      },
                                 isLoading: state.isDownloading,
                                 opacity: buttonOpacity,
                               ),
@@ -177,8 +223,13 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                                 enabled: canNext,
                                 isLoading: state.isNextLoading,
                                 opacity: buttonOpacity,
-                                onPressed: controller.nextImage,
-                                onDisabledPressed: controller.nextImage,
+                                onPressed: () {
+                                  _impact();
+                                  unawaited(controller.nextImage());
+                                },
+                                onDisabledPressed: () {
+                                  unawaited(controller.nextImage());
+                                },
                               ),
                             ),
                           ],
@@ -215,7 +266,20 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
                           _closeDrawer();
                           controller.clearFilters();
                         },
-                        onOpenHistory: _openHistory,
+                        onOpenHistory: () => _openHistory(),
+                        onOpenTagBrowser: _openTagBrowser,
+                        onOpenGalleries: _openGalleries,
+                        onOpenGallery: _openGallery,
+                        onOpenSettings: _openSettings,
+                        onSaveDefaultQuery: () {
+                          unawaited(controller.saveCurrentQueryAsDefault());
+                        },
+                        onClearDefaultQuery: () {
+                          unawaited(controller.clearDefaultQuery());
+                        },
+                        onAddUserTag: (tag) {
+                          unawaited(controller.addTag(tag, switchTo: false));
+                        },
                       ),
                     ),
                     if (progress > 0.02)
@@ -279,6 +343,7 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
   }
 
   void _openDrawer() {
+    HapticFeedback.selectionClick();
     _drawerController.animateTo(
       1,
       curve: Curves.easeOutCubic,
@@ -291,6 +356,42 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
       0,
       curve: Curves.easeOutCubic,
       duration: const Duration(milliseconds: 180),
+    );
+  }
+
+  void _impact() {
+    HapticFeedback.lightImpact();
+  }
+
+  Future<void> _maybeShowIntro() async {
+    if (!mounted) {
+      return;
+    }
+    final store = ref.read(userPreferencesStoreProvider);
+    if (store.loadIntroSeen()) {
+      return;
+    }
+    await store.saveIntroSeen();
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF191A1C),
+          title: const Text('开始浏览'),
+          content: const Text(
+            '左上角可以打开筛选、标签、图集、历史和设置。底部按钮用于保存与下一张，右上角用于收藏。',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('知道了'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -337,10 +438,42 @@ class _RandomImagePageState extends ConsumerState<RandomImagePage>
     }
   }
 
-  Future<void> _openHistory() async {
+  Future<void> _openHistory({bool showFavorites = false}) async {
     _closeDrawer();
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const HistoryPage()),
+      MaterialPageRoute<void>(
+        builder: (_) => HistoryPage(showFavorites: showFavorites),
+      ),
+    );
+  }
+
+  Future<void> _openTagBrowser() async {
+    _closeDrawer();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const TagBrowserPage()),
+    );
+  }
+
+  Future<void> _openGalleries() async {
+    _closeDrawer();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const GalleryBrowserPage()),
+    );
+  }
+
+  Future<void> _openGallery(int galleryId) async {
+    _closeDrawer();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GalleryDetailPage(galleryId: galleryId),
+      ),
+    );
+  }
+
+  Future<void> _openSettings() async {
+    _closeDrawer();
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
     );
   }
 
