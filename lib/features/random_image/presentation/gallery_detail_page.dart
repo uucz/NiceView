@@ -245,7 +245,7 @@ class _GalleryHeader extends StatelessWidget {
             Text(
               [
                 if (detail.category != null) detail.category!,
-                '${loadedCount}/${totalImages == 0 ? detail.imageCount : totalImages} 张',
+                '$loadedCount/${totalImages == 0 ? detail.imageCount : totalImages} 张',
               ].join(' · '),
               style: const TextStyle(color: niceMuted, fontSize: 12),
             ),
