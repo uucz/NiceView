@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-第三阶段：v0.4.0 功能开发已完成本地可用验证；下一步是安装 Flutter/Dart 的环境或 GitHub Actions 中跑 analyze/test/build，并做 iOS 实机回归。反馈/举报和分享继续不做；PR 暂不发起。
+第三阶段：v0.4.0 功能开发、CI 发布与 iOS 实机回归已完成。当前补齐 Android APK Release 资产发布链；反馈/举报和分享继续不做，PR 暂不发起。
 
 ## 任务列表
 
@@ -35,12 +35,14 @@
 - [x] 补充离线入口、可访问性标签、iOS haptic、App icon 与 launch screen（2026-05-14）
 - [x] 完成 v0.4.0 本地非 Flutter 验证（2026-05-14）
 - [x] 下一批功能完成后统一发布 v0.4.0 并完成 CI/Release/AltStore 源验证（2026-05-15）
-- [ ] v0.4.0 iOS 实机回归
+- [x] v0.4.0 iOS 实机回归（2026-05-15，用户确认实机检查无误）
+- [x] 补齐 Android APK GitHub Release 资产发布链（2026-05-15）
 - [x] 评估是否拆分向上游提交 PR：建议后续拆小 PR，当前暂不发起（2026-05-14）
 
 ## 验收标准
 
 - GitHub Release 中存在 `niceview-unsigned.ipa`
+- GitHub Release 中存在 Android split-per-ABI APK：`arm64-v8a`、`armeabi-v7a`、`x86_64`
 - GitHub Pages 可访问 `https://uucz.github.io/NiceView/source.json`
 - AltStore 能添加源，并在源内展示 `Nice View`
 - AltStore 下载 IPA 后权限校验通过

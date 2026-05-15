@@ -6,6 +6,9 @@ on:
       - "**"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build release APK
@@ -74,3 +77,19 @@ jobs:
           name: nice-view-release-apk
           path: build/app/outputs/flutter-apk/*-release.apk
           if-no-files-found: error
+
+      - name: Prepare GitHub Release APKs
+        if: github.ref_type == 'tag'
+        run: |
+          tag="${GITHUB_REF_NAME//\//-}"
+          mkdir -p build/release-assets
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "build/release-assets/niceview-${tag}-android-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "build/release-assets/niceview-${tag}-android-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk "build/release-assets/niceview-${tag}-android-x86_64.apk"
+
+      - name: Upload APKs to GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: build/release-assets/*.apk

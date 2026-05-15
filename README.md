@@ -11,6 +11,16 @@
 - 浏览历史、收藏视图、默认偏好和缓存数据管理
 - iOS haptic、App icon 与 launch screen 注入
 
+## Android
+
+打 `v*` 标签后，GitHub Actions 会构建 split-per-ABI release APK，并将以下资产上传到对应 GitHub Release：
+
+- `niceview-vX.Y.Z-android-arm64-v8a.apk`：大多数现代 Android 设备使用。
+- `niceview-vX.Y.Z-android-armeabi-v7a.apk`：较老的 32 位 ARM 设备使用。
+- `niceview-vX.Y.Z-android-x86_64.apk`：模拟器或少量 x86_64 设备使用。
+
+workflow 同时保留 `nice-view-release-apk` Actions artifact，便于从单次 CI 运行中下载原始构建产物。
+
 ## iOS / AltStore
 
 本 fork 增加了 iOS 未签名 IPA 与 AltStore Classic 源的自动发布流程。打 `v*` 标签后，GitHub Actions 会：

@@ -243,6 +243,17 @@
   - iOS workflow 中 `Analyze and test`、IPA 构建、source.json 生成、Release 上传、Pages 部署全部成功。
   - Android workflow 中 `Analyze`、`Test`、release APK 构建和 artifact 上传全部成功。
   - `source.json` 已发布为 `0.4.0+1`，下载地址指向 `v0.4.0/niceview-unsigned.ipa`。
-  - Release 资产包含 `niceview-unsigned.ipa` 和 `source.json`；IPA 大小为 `7253767` 字节，和源内 `size` 一致。
+  - 初始 Release 资产包含 `niceview-unsigned.ipa` 和 `source.json`；IPA 大小为 `7253767` 字节，和源内 `size` 一致。
   - IPA 下载地址经重定向后返回 HTTP `200`，`content-type` 为 `application/octet-stream`。
-- 待验证：用户在 iOS 设备通过 AltStore 更新 `v0.4.0` 后，实测侧栏入口、首次引导、标签浏览、图集浏览、设置页、默认偏好、保存 Photos 和收藏持久化。
+- iOS 实机：用户已确认 `v0.4.0` 检查无误。
+
+## 2026-05-15：补齐 Android APK Release 资产
+
+- 问题：`Android Release APK` workflow 已成功构建 APK，但只上传为 Actions artifact `nice-view-release-apk`，没有同步上传到 GitHub Release，导致 `v0.4.0` Release 页面只看到 IPA 与 `source.json`。
+- 修复：
+  - `.github/workflows/android-release.yml` 增加 `contents: write` 权限。
+  - tag 构建时将 split-per-ABI APK 重命名为 `niceview-<tag>-android-<abi>.apk`。
+  - tag 构建时使用 `softprops/action-gh-release@v2` 上传 APK 到对应 GitHub Release。
+  - README 增加 Android APK 发布说明。
+- 本次补传来源：GitHub Actions run `25893835254`，提交 `e4a5c57c466c6d60ebe0ed21e06dc73acccd8234`，artifact 中包含 `arm64-v8a`、`armeabi-v7a`、`x86_64` 三个 release APK。
+- 回滚方式：如果上游 Release 不希望展示 Android 资产，可从 Release 页面删除三份 APK；workflow 可回滚本次对 `.github/workflows/android-release.yml` 的新增 Release 上传步骤，保留 Actions artifact。
